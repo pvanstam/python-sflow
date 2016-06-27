@@ -15,6 +15,7 @@ def show_num_records(s_records):
             print("    CountersSample: %d records" % sample.num_counter_records)
 
 def repr_flow(flow_datagram):
+#    print(repr(flow_datagram))
     return repr(flow_datagram)
 
 
@@ -29,9 +30,8 @@ if __name__ == '__main__':
         flow_data.unpack(addr, data)
 
         # Test 1
-        # print("Flow: %d (%d samples)" % (flow_data.sequence_number, flow_data.num_samples))
+        #print("Flow: %d (%d samples)" % (flow_data.sequence_number, flow_data.num_samples))
         #show_num_records(flow_data.sample_records)
 
         # Test 2
-        print(repr_flow)
-        
+        print(repr_flow(flow_data))
