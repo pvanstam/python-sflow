@@ -50,7 +50,11 @@ import sys
 import xdrlib
 import socket
 import math
-import util
+
+try:
+    import util
+except:
+    from sflow import util
 
 
 # Constants for the sample_data member of 'struct sample_record'
@@ -384,6 +388,7 @@ class flowdata_record_raw():
     '''
         not defined sample record in  Flow or Counter samples
         class is most simple form of a sample record object
+        # TODO: add sFlow specs of the Raw FlowSample record
     '''
     def __init__(self):
         self.type = 0
@@ -406,7 +411,8 @@ class flowdata_record_raw():
             self.sampled_packet = None
 
     def __repr__(self):
-        repr_ = ("    RawPacketHeader: type: %d, len: %d\n" % (self.type, self.len))
+        repr_ = ("    RawPacketHeader: type: %d, len: %d, hdr proto: %d, len hdr: %d\n" % 
+                 (self.type, self.len, self.header_protocol, len(self.header)))
         if self.sampled_packet != None:
             repr_ += repr(self.sampled_packet)
         return repr_
