@@ -569,7 +569,7 @@ class counter_record_vlan():
 """
     Raw ethernet / IP / TCP / UDP header classes for sFlow raw flows
 """
-class EthernetHeader ():
+class EthernetHeader():
     """Represents an IEEE 802.3 header including its payload."""
 
     def __init__(self, header):
@@ -579,13 +579,16 @@ class EthernetHeader ():
         self.payload = None
 
     def __repr__(self):
-        return ('      EthernetHeader| src: %s, dst: %s, type: %s\n' %
+        repr_ = ('      EthernetHeader| src: %s, dst: %s, type: %s\n' %
                 (util.mac_to_string(self.src),
                  util.mac_to_string(self.dst),
                  util.ether_type_to_string(self.ether_type)))
+        if self.payload:
+            repr_ += repr(self.payload)
+        return repr_
 
 
-class IEEE8021QHeader ():
+class IEEE8021QHeader():
     """Represents an IEEE 802.1Q header including its payload."""
 
     def __init__(self, header):
