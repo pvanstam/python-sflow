@@ -28,7 +28,7 @@ def mac_to_string(mac):
 def ip_to_string(ip):
     """Returns ip as a string in dotted quad notation.
     
-        should be replaced by spcket.inet_aton or inet_pton
+        should be replaced by socket.inet_aton or inet_pton
     """
 #    ip = ntohl(ip)              # network byte order is big-endian
     return '%d.%d.%d.%d' % (ip & 0xff,

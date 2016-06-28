@@ -516,6 +516,7 @@ class counter_record_ethernet():
     def __repr__(self):
         return("    CountersEthernet: type: %d, len: %d\n" % (self.type, self.len))
 
+
 class counter_record_tokenring():
     '''
         not defined sample record in  Flow or Counter samples
@@ -530,6 +531,7 @@ class counter_record_tokenring():
     
     def __repr__(self):
         return("    CountersTokenRing: type: %d, len: %d\n" % (self.type, self.len))
+
 
 class counter_record_vg():
     '''
@@ -644,7 +646,7 @@ class IPv4Header ():
                 self.payload = UDPHeader(header[20:])
 
     def __repr__(self):
-        repr_ = ('        IPv4Header| src: %s, dst: %s, proto: %s paylen: %d\n' %
+        repr_ = ('        IPv4Header| src: %s, dst: %s, proto: %s, paylen: %d\n' %
                  (util.ip_to_string(self.src),
                   util.ip_to_string(self.dst),
                   util.ip_proto_to_string(self.protocol),
