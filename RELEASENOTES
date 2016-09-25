@@ -1,0 +1,13 @@
+
+
+19-09-2016
+* sflow - v.0.1: added pack functions to be able to send sFlow data
+* splitsflow: v.0.1:
+  * read from network
+  * split sFlow Sample records based on source IP prefix
+  * pack Sample records into separate sFlow packets
+
+23-06-2016
+* sflow - v0.01: basic functions; classes created. unpack of flowdata possible
+* splitsflow: test application to read data from the netwrok and unpack sFlow data.
+    represent data on screen with the repr() function

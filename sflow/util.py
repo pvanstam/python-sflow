@@ -30,7 +30,7 @@ def ip_to_string(ip):
     
         should be replaced by socket.inet_aton or inet_pton
     """
-#    ip = ntohl(ip)              # network byte order is big-endian
+    #ip = ntohl(ip)              # network byte order is big-endian
     return '%d.%d.%d.%d' % (ip & 0xff,
                             (ip >> 8) & 0xff,
                             (ip >> 16) & 0xff,

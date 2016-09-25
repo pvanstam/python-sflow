@@ -15,8 +15,7 @@
     http://en.wikipedia.org/wiki/IEEE_802.1Q
     http://en.wikipedia.org/wiki/Ethernet
     
-    original source: https://github.com/kok/pyflow
-    Kai Kaminski 
+    original source: https://github.com/kok/pyflow (Kai Kaminski)
     
     @author: Pim van Stam <pim@svsnet.nl>
     
@@ -43,8 +42,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 """
-__version__ = "0.01"
-__modified__ = "27-06-2016"
+__version__ = "0.1"
+__modified__ = "19-09-2016"
 
 import sys
 import xdrlib
@@ -178,11 +177,31 @@ class Datagram(object):
             
             data = up.unpack_bytes()
             sample.len = len(data)
-            sample.unpack(xdrlib.Unpacker(data))
+            sample.unpack(data)
             self.sample_records.append(sample)
             
         # we should be ready now
         #up.done()
+        
+    def pack(self):
+        '''
+            pack the datagram class record into a binary datagram object
+        '''
+        packdata = xdrlib.Packer() # create the packed object
+        packdata.pack_int(self.version)
+        packdata.pack_int(self.agent_address_type)
+        packdata.pack_uint(self.agent_address) # IPv4; IPv6 not supported yet; see unpack
+        packdata.pack_uint(self.sub_agent_id)
+        packdata.pack_uint(self.sequence_number)
+        packdata.pack_uint(self.uptime)
+        packdata.pack_uint(self.num_samples)
+
+        # Iterating over sample records
+        for i in range(self.num_samples):
+            obj = self.sample_records[i].pack()
+            packdata.pack_bytes(obj.get_buffer())
+
+        return packdata.get_buffer()
 
 
     def __repr__(self):
@@ -238,20 +257,42 @@ class FlowSample ():
 
 
     def unpack(self, data):
-        self.sequence_number = data.unpack_uint()
-        self.source_id = data.unpack_uint()
-        self.sampling_rate = data.unpack_uint()
-        self.sample_pool = data.unpack_uint()
-        self.drops = data.unpack_uint()
-        self.input_if = data.unpack_uint()
-        self.output_if = data.unpack_uint()
-        self.num_flow_records = data.unpack_uint()
+        pdata = xdrlib.Unpacker(data)
+        self.sequence_number = pdata.unpack_uint()
+        self.source_id = pdata.unpack_uint()
+        self.sampling_rate = pdata.unpack_uint()
+        self.sample_pool = pdata.unpack_uint()
+        self.drops = pdata.unpack_uint()
+        self.input_if = pdata.unpack_uint()
+        self.output_if = pdata.unpack_uint()
+        self.num_flow_records = pdata.unpack_uint()
 
         for i in range(self.num_flow_records):
             flow_record = get_sample_record_object(SAMPLE_DATA_FLOW_RECORD, 
-                                                  data.unpack_uint(),
-                                                  data.unpack_bytes())            
+                                                  pdata.unpack_uint(),
+                                                  pdata.unpack_bytes())            
             self.flow_records.append(flow_record)
+
+
+    def pack(self):
+        '''
+            Pack data object
+        '''
+        packdata = xdrlib.Packer() # create the packed object
+        packdata.pack_uint(self.sequence_number)
+
+        packdata.pack_uint(self.source_id)
+        packdata.pack_uint(self.sampling_rate)
+        packdata.pack_uint(self.sample_pool)
+        packdata.pack_uint(self.drops)
+        packdata.pack_uint(self.input_if)
+        packdata.pack_uint(self.output_if)
+        packdata.pack_uint(self.num_flow_records)
+
+        for i in range(self.num_flow_records):
+            packdata.pack_bytes(self.flow_records[i].pack())
+
+        return packdata
 
         
     def __repr__(self):
@@ -281,19 +322,37 @@ class CounterSample():
         self.num_counter_records = 0
         self.counter_records = []
 
+
     def unpack(self, data):
         '''
             unpack elements in data for CounterSample sFlow record
         '''
-        self.sequence_number = data.unpack_uint()
-        self.source_id = data.unpack_uint()
-        self.num_counter_records = data.unpack_uint()
+        pdata = xdrlib.Unpacker(data)
+        self.sequence_number = pdata.unpack_uint()
+        self.source_id = pdata.unpack_uint()
+        self.num_counter_records = pdata.unpack_uint()
         
         for i in range(self.num_counter_records):
             cnt_record = get_sample_record_object(SAMPLE_DATA_COUNTER_RECORD, 
-                                                  data.unpack_uint(),
-                                                  data.unpack_bytes())
+                                                  pdata.unpack_uint(),
+                                                  pdata.unpack_bytes())
             self.counter_records.append(cnt_record)
+
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        packdata = xdrlib.Packer() # create the packed object
+        packdata.pack_uint(self.sequence_number)
+        packdata.pack_uint(self.source_id)
+        packdata.pack_uint(self.num_counter_records)
+
+        for i in range(self.num_flow_records):
+            packdata.pack_bytes(self.counter_records[i].pack())
+
+        return packdata
 
 
     def __repr__(self):
@@ -358,7 +417,7 @@ def get_sample_record_object(sample_type, record_type, data):
 
     record.len = len(data)
     record.type = record_type
-    record.unpack(xdrlib.Unpacker(data))
+    record.unpack(data)
     return record
 
 
@@ -370,9 +429,15 @@ class sample_record_unknown():
     def __init__(self):
         self.type = 0
         self.len = 0
+        self.data = None
         
     def unpack(self, data):
+        #TODO: implement unpack function
         self.data = data
+    
+    def pack(self):
+        return self.data
+
     
     def __repr__(self):
         return("    RecordUndefined: Undefined record of type: %d, len: %d\n" % (self.type, self.len))
@@ -381,7 +446,14 @@ class sample_record_unknown():
 """
     FlowSample - flow records classes and code/decode functions
     
-    check functions: read_sampled_xxx
+    each class must have:
+    init()
+    unpack(data)
+    pack()
+    __repr__()
+    
+    # TODO:
+    check functions: read_sampled_ipv4
 
 """
 class flowdata_record_raw():
@@ -400,15 +472,29 @@ class flowdata_record_raw():
         self.sampled_packet = None
         
     def unpack(self, data):
-        self.header_protocol = data.unpack_int()
-        self.frame_length = data.unpack_uint()
-        self.stripped = data.unpack_uint()
-        self.header = data.unpack_opaque()
+        pdata = xdrlib.Unpacker(data)
+        self.header_protocol = pdata.unpack_int()
+        self.frame_length = pdata.unpack_uint()
+        self.stripped = pdata.unpack_uint()
+        self.header = pdata.unpack_opaque()
     
         if self.header_protocol == HEADER_PROTO_ETHERNET_ISO88023:
             self.sampled_packet = decode_iso88023(self.header)
         else:
             self.sampled_packet = None
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        packdata = xdrlib.Packer() # create the packed object
+        packdata.pack_int(self.header_protocol)
+        packdata.pack_uint(self.frame_length)
+        packdata.pack_uint(self.stripped)
+        packdata.pack_opaque(self.header)
+        return packdata
+
 
     def __repr__(self):
         repr_ = ("    RawPacketHeader: type: %d, len: %d, hdr proto: %d, len hdr: %d\n" % 
@@ -432,11 +518,24 @@ class flowdata_record_ethernet():
         self.eth_type = 0
 
     def unpack(self, data):
-        self.mac_length = data.unpack_uint()
-        self.src_mac = data.unpack_fopaque(6)
-        self.dst_mac = data.unpack_fopaque(6)
-        self.eth_type = data.unpack_uint()
-    
+        pdata = xdrlib.Unpacker(data)
+        self.mac_length = pdata.unpack_uint()
+        self.src_mac = pdata.unpack_fopaque(6)
+        self.dst_mac = pdata.unpack_fopaque(6)
+        self.eth_type = pdata.unpack_uint()
+
+    def pack(self):
+        '''
+            Pack data object
+        '''
+        packdata = xdrlib.Packer() # create the packed object
+        packdata.pack_uint(self.mac_length)
+        packdata.pack_fopaque(6, self.src_mac)
+        packdata.pack_fopaque(6, self.dst_mac)
+        packdata.pack_uint(self.eth_type)
+        return packdata
+
+
     def __repr__(self):
         return("    EthernetPacketHeader: type: %d, len: %d, src_mac: %s, dst_mac: %s, eth_type: %s, mac_len: %d\n" % 
                (self.type, self.len,
@@ -454,10 +553,21 @@ class flowdata_record_ipv4():
     def __init__(self):
         self.type = 0
         self.len = 0
+        self.data = None
         
     def unpack(self, data):
+        #TODO: implement unpack function
+        self.data = data
         return None
-    
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        #TODO: implement pack function
+        return None
+
     def __repr__(self):
         return("    IPv4PacketHeader: type: %d, len: %d\n" % (self.type, self.len))
 
@@ -470,10 +580,20 @@ class flowdata_record_extswitch():
     def __init__(self):
         self.type = 0
         self.len = 0
-        
+        self.data = None
+
     def unpack(self, data):
+        #TODO: implement unpack function
         self.data = data
-    
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        #TODO: implement pack function
+        return self.data
+
     def __repr__(self):
         return("    ExtSwitchData: type: %d, len: %d\n" % (self.type, self.len))
 
@@ -491,13 +611,22 @@ class counter_record_if():
     def __init__(self):
         self.type = 0
         self.len = 0
-        
+        self.data = None
+
     def unpack(self, data):
+        #TODO: implement unpack function
         self.data = data
-    
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        #TODO: implement pack function
+        return self.data
+
     def __repr__(self):
         return("    CountersIf: type: %d, len: %d\n" % (self.type, self.len))
-
 
 
 
@@ -509,10 +638,20 @@ class counter_record_ethernet():
     def __init__(self):
         self.type = 0
         self.len = 0
-        
+        self.data = None
+
     def unpack(self, data):
+        #TODO: implement unpack function
         self.data = data
-    
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        #TODO: implement pack function
+        return self.data
+
     def __repr__(self):
         return("    CountersEthernet: type: %d, len: %d\n" % (self.type, self.len))
 
@@ -525,10 +664,20 @@ class counter_record_tokenring():
     def __init__(self):
         self.type = 0
         self.len = 0
-        
+        self.data = None
+
     def unpack(self, data):
+        #TODO: implement unpack function
         self.data = data
-    
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        #TODO: implement pack function
+        return self.data
+  
     def __repr__(self):
         return("    CountersTokenRing: type: %d, len: %d\n" % (self.type, self.len))
 
@@ -541,10 +690,20 @@ class counter_record_vg():
     def __init__(self):
         self.type = 0
         self.len = 0
-        
+        self.data = None
+
     def unpack(self, data):
+        #TODO: implement unpack function
         self.data = data
-    
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        #TODO: implement pack function
+        return self.data
+ 
     def __repr__(self):
         return("    CountersVG: type: %d, len: %d\n" % (self.type, self.len))
 
@@ -557,18 +716,29 @@ class counter_record_vlan():
     def __init__(self):
         self.type = 0
         self.len = 0
-        
+        self.data = None
+
     def unpack(self, data):
+        #TODO: implement unpack function
         self.data = data
-    
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        #TODO: implement pack function
+        return self.data
+  
     def __repr__(self):
         return("    CountersVLAN: type: %d, len: %d\n" % (self.type, self.len))
 
 
 
-
-
 """
+    Representation helper functions
+    ===============================
+    
     Raw ethernet / IP / TCP / UDP header classes for sFlow raw flows
 """
 class EthernetHeader():
