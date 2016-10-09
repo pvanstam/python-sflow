@@ -29,10 +29,13 @@
     SOFTWARE.
 '''
 __version__ = "0.1"
+from util import set_logging
 __modified__ = "19-09-2016"
 
 import sys
 import socket
+import threading
+import queue
 import struct
 import copy
 
@@ -43,12 +46,90 @@ except:
     from sflow import sflow
     from sflow import util
 
+
+# =============================================================================
+# Configuration items
+# =============================================================================
+
 PREFIXLIST = "../bgp_prefixes.txt"
 COLLECTORLIST = "collectorlist.txt"
+LOGFILE = "/var/log/splitsflow.log"
+
+# =============================================================================
+# End of configuration
+# =============================================================================
+
 
 seqnr_list = { 1: 1 }
 prefix_list = []    # consists of 3 elements: (network, masklen, ID)
-collector_list = [] # consists of collectorid, IP, Port
+collector_list = {} # dictionary of class Collector()
+
+
+class Collector():
+    """
+        Collector is a list of collector's config
+        Collector itself: Ip, port
+        Thread for delivering flows
+        A queue is created tom communicate with collectors thread for sending data
+    """
+    def __init__(self, c_id, host, port):
+        self.c_id = c_id
+        self.host = host
+        self.port = port
+        # create a queue for the collector and a thread for sending data
+        self.queue = queue.Queue()
+        self.thread = FlowThread(c_id, host, port, self.queue)
+        self.thread.setDaemon(True)
+        self.thread.start()
+    
+    def senddata(self, data):
+        logger.debug("Collector: put data on the queue of collector %d (%d bytes)" % (self.c_id, len(data)))
+        self.queue.put(data)
+
+
+
+class FlowThread(threading.Thread):
+    """
+        A thread which polls a given queue and transmits received flow data
+        to a specified target host.
+    """
+
+    def __init__(self, target, host, port, queue):
+        self.queue  = queue
+        self.target = target
+        self.host   = host # host in dotted notation
+        self.port   = int(port)
+        self.count  = 0
+        threading.Thread.__init__(self)
+        logger.debug("FlowThread: Thread %s started, destination host %s, port %s" % 
+                     (self.target, self.host, self.port))
+
+
+    def run(self):
+        try:
+            logger.debug("FlowThread: create socket for %s on port %d" % (self.host, self.port))
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        except:
+            exctype, excvalue = sys.exc_info()[:2]
+            logger.error("FlowThread: ERROR: can't create socket, exception: %s - %s" % (exctype, excvalue))
+
+            sys.exit(1)
+
+        while True:
+            # now let's change the header:
+            # modify count and flow_sequence so it makes sense for the receiver
+            data = self.queue.get()
+            #hdata = struct.unpack("!HHIIIIBBH", header)
+            #hdr = struct.pack("!HHIIIIBBH", hdata[0], len(data), hdata[2], hdata[3], hdata[4], count, hdata[6], hdata[7], hdata[8])
+
+            #sock.sendto("%s%s" % (hdr, "".join(data)), (self.host, self.port))
+            logger.debug("FlowThread: send data to %s on port %d (%d bytes)" % (self.host, self.port, len(data)))
+            util.hexdump_bytes(data)
+            sock.sendto(data, (self.host, self.port))
+            self.count += len(data)
+            self.queue.task_done()
+            logger.debug("FlowThread: new count is " + str(self.count))
+
 
 def show_ipv4_addr(flow_datagram):
     """
@@ -109,7 +190,7 @@ def read_collectorlist(fn):
         Output is the global collector_list
     """
     global collector_list
-    collector_list = []  # clear the list
+    collector_list = {}  # clear the list
     fp = open(fn, "r")
     cnt = 0
     for line in fp:
@@ -117,9 +198,11 @@ def read_collectorlist(fn):
         if len(elem) >= 3:
             cnt += 1
             id_ = int(elem[0])
-            ipaddr = struct.unpack('!L',socket.inet_aton(elem[1]))[0]
+            #ipaddr = struct.unpack('!L',socket.inet_aton(elem[1]))[0]
+            #ipaddr = socket.ntohl(ipaddr)
+            ipaddr = elem[1]
             port = int(elem[2])
-            collector_list.append((id_, ipaddr, port))
+            collector_list[id_] = Collector(id_, ipaddr, port)
     fp.close()
     return cnt # number of elements in the list
     
@@ -175,27 +258,23 @@ def pack_flow(flow_dg, flow_record, seqnr):
     return datagram.pack()
 
 
-def send_flow(datagram, collid):
+def send_datagram(collector_id, datagram):
     """
-        Send the sFlow datagra to the sFlow collector, identified by
-        the collid
-        return True of False on success of the transfer
+        send data to the collector with collid
+        only if the collector is defined
+        collectors queue to send data to is in the collector_list
     """
     global collector_list
-    coll_ip = None
-    coll_port = None
-    for id_, ip, port in collector_list:
-        if id_ == collid:
-            coll_ip = ip
-            coll_port = port
-            break
 
-    if coll_ip != None:
-        print("Flow sample for collector " + util.ip_to_string(socket.ntohl(coll_ip)) + " on port " + str(coll_port))
-        return (coll_ip, coll_port)
-    else:
-        print("No collector defined")
-        return None
+    try:
+        print(collector_list[collector_id].host)
+        collector_list[collector_id].senddata(datagram)
+    except KeyError:
+        """ Do nothing, no collector defined for this datagram """
+    except:
+        exctype, excvalue = sys.exc_info()[:2]
+        logger.error("send_datagram: Unknown exception: %s - %s" % (exctype, excvalue))
+
 
 
 def split_records(flow_datagram):
@@ -222,7 +301,7 @@ def split_records(flow_datagram):
                                 seqnr = get_nextseqnr(collectid)
                                 retstr += "  %s (%d), seqnr=%d\n" % (util.ip_to_string(payl.dst), collectid, seqnr)
                                 sflow_dg = pack_flow(flow_datagram, rec, seqnr)
-                                send_flow(sflow_dg, collectid)
+                                send_datagram(collectid, sflow_dg)
                             else:
                                 retstr += "  unknown collector for IP " + util.ip_to_string(payl.dst)
 #                else:
@@ -233,12 +312,16 @@ def split_records(flow_datagram):
 
 
 
-
-
 if __name__ == '__main__':
     
+    logger = util.set_logging(LOGFILE, "debug")
+
     read_prefixlist(PREFIXLIST)
     print(read_collectorlist(COLLECTORLIST))
+    
+    for key in collector_list.keys():
+        item = collector_list[key]
+        print("ID: %d, host: %s, port: %d" % (int(item.c_id), item.host, item.port))
     
     listen_addr = ("0.0.0.0", 5700)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
