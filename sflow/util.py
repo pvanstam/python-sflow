@@ -1,8 +1,47 @@
 
 
 import sys
-from socket import ntohl
-from math import floor, ceil, log
+import os
+import socket
+import math
+import logging
+import logging.handlers
+
+
+def write_pid(filename):
+    """ Write process id to /var/run """
+    pid = os.getpid()
+    fpid = open(filename, "w")
+    fpid.write(str(pid))
+    fpid.close()
+    return pid
+
+def remove_pid(pidfile):
+    os.unlink(pidfile)
+
+
+def set_logging(logfile, level):
+    '''
+        set logging handler for logging output to logfile
+    '''
+    if level == 'debug':
+        loglevel = logging.DEBUG
+    elif level == 'warning':
+        loglevel = logging.WARNING
+    elif level == 'error':
+        loglevel = logging.ERROR
+    else:
+        loglevel = logging.INFO
+    
+    log = logging.getLogger() # get root logger
+    log.setLevel(loglevel)
+    loghandler = logging.handlers.WatchedFileHandler(filename=logfile)
+    frm = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", "%Y-%m-%d %H:%M:%S")
+    loghandler.setFormatter(frm)
+    log.addHandler(loghandler)
+
+    return log
+
 
 ether_type_description = { 0x0800 : 'IP',
                            0x0806 : 'ARP',
@@ -30,7 +69,7 @@ def ip_to_string(ip):
     
         should be replaced by socket.inet_aton or inet_pton
     """
-    #ip = ntohl(ip)              # network byte order is big-endian
+    #ip = socket.ntohl(ip)              # network byte order is big-endian
     return '%d.%d.%d.%d' % (ip & 0xff,
                             (ip >> 8) & 0xff,
                             (ip >> 16) & 0xff,
@@ -145,7 +184,7 @@ def hexdump_bytes(buf, stream=sys.stdout):
 
     col_fmt = '%02X '
     col_width = 3
-    off_fmt = '%%0%dX    ' % int(ceil(log(len(buf), 16)))
+    off_fmt = '%%0%dX    ' % int(math.ceil(math.log(len(buf), 16)))
     sep1_width = 3
     sep2_width = 5
     
