@@ -70,3 +70,24 @@ if __name__ == '__main__':
         # Test 3
         #sys.stdout.write(show_ipv4_addr(flow_data))
 
+        # Test 4
+        # unpack and pack again, unpack to compare
+        
+        print("\n\nOrignal data from stream")
+        sys.stdout.write(repr(flow_data))
+
+        new_data = flow_data.pack()
+        new_flow_data = sflow.Datagram()
+        new_flow_data.unpack(addr, new_data)
+
+        print("Data unpacked and packed again")
+        sys.stdout.write(repr(new_flow_data))
+
+        print("Hexdump original data")
+        util.hexdump_bytes(data)
+        print("Hexdump repacked data")
+        util.hexdump_bytes(new_data)
+        
+        
+
+

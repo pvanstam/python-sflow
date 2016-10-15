@@ -42,8 +42,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 """
-__version__ = "0.1"
-__modified__ = "19-09-2016"
+__version__ = "0.2"
+__modified__ = "15-10-2016"
 
 import sys
 import xdrlib
@@ -159,7 +159,7 @@ class Datagram(object):
 
         self.agent_address_type = up.unpack_int()
         if self.agent_address_type == 1:                 # IPv4
-            self.agent_address = socket.ntohl(up.unpack_uint())
+            self.agent_address = up.unpack_uint()
         else:
             # IPv6 not supported yet
             raise Exception()
@@ -169,16 +169,20 @@ class Datagram(object):
         self.sequence_number = up.unpack_uint()
         self.uptime = up.unpack_uint()
         self.num_samples = up.unpack_uint()
+        if self.num_samples == None:
+            self.num_samples = 0
 
         # Iterating over sample records
         for i in range(self.num_samples):
             sample_type = up.unpack_uint()
-            sample = get_sample_object(sample_type)
-            
-            data = up.unpack_bytes()
-            sample.len = len(data)
-            sample.unpack(data)
-            self.sample_records.append(sample)
+            if sample_type != None:
+                sample = get_sample_object(sample_type)
+                if sample != None:
+                    data = up.unpack_bytes()
+                    if data != None:
+                        sample.len = len(data)
+                        sample.unpack(data)
+                        self.sample_records.append(sample)
             
         # we should be ready now
         #up.done()
@@ -198,8 +202,10 @@ class Datagram(object):
 
         # Iterating over sample records
         for i in range(self.num_samples):
-            obj = self.sample_records[i].pack()
-            packdata.pack_bytes(obj.get_buffer())
+            rec = self.sample_records[i]
+            packdata.pack_uint(rec.sample_type)
+            packdata.pack_bytes(rec.pack())
+
 
         return packdata.get_buffer()
 
@@ -279,6 +285,8 @@ class FlowSample ():
             Pack data object
         '''
         packdata = xdrlib.Packer() # create the packed object
+#        packdata.pack_uint(self.sample_type)
+#        packdata.pack_uint(self.len)
         packdata.pack_uint(self.sequence_number)
 
         packdata.pack_uint(self.source_id)
@@ -290,9 +298,11 @@ class FlowSample ():
         packdata.pack_uint(self.num_flow_records)
 
         for i in range(self.num_flow_records):
-            packdata.pack_bytes(self.flow_records[i].pack())
+            rec = self.flow_records[i]
+            packdata.pack_uint(rec.type)
+            packdata.pack_bytes(rec.pack())
 
-        return packdata
+        return packdata.get_buffer()
 
         
     def __repr__(self):
@@ -340,19 +350,17 @@ class CounterSample():
 
 
     def pack(self):
-        '''
-            Pack data object
-            TO BE IMPLEMENTED
-        '''
         packdata = xdrlib.Packer() # create the packed object
         packdata.pack_uint(self.sequence_number)
         packdata.pack_uint(self.source_id)
         packdata.pack_uint(self.num_counter_records)
 
-        for i in range(self.num_flow_records):
-            packdata.pack_bytes(self.counter_records[i].pack())
+        for i in range(self.num_counter_records):
+            rec = self.counter_records[i]
+            packdata.pack_uint(rec.type)
+            packdata.pack_bytes(rec.pack())
 
-        return packdata
+        return packdata.get_buffer()
 
 
     def __repr__(self):
@@ -463,7 +471,7 @@ class flowdata_record_raw():
         # TODO: add sFlow specs of the Raw FlowSample record
     '''
     def __init__(self):
-        self.type = 0
+        self.type = FLOW_DATA_RAW_HEADER
         self.len = 0
         self.header_protocol = 0
         self.frame_length = 0
@@ -472,6 +480,7 @@ class flowdata_record_raw():
         self.sampled_packet = None
         
     def unpack(self, data):
+        self.len = len(data)
         pdata = xdrlib.Unpacker(data)
         self.header_protocol = pdata.unpack_int()
         self.frame_length = pdata.unpack_uint()
@@ -484,16 +493,12 @@ class flowdata_record_raw():
             self.sampled_packet = None
 
     def pack(self):
-        '''
-            Pack data object
-            TO BE IMPLEMENTED
-        '''
         packdata = xdrlib.Packer() # create the packed object
         packdata.pack_int(self.header_protocol)
         packdata.pack_uint(self.frame_length)
         packdata.pack_uint(self.stripped)
         packdata.pack_opaque(self.header)
-        return packdata
+        return packdata.get_buffer()
 
 
     def __repr__(self):
@@ -510,7 +515,7 @@ class flowdata_record_ethernet():
         class is most simple form of a sample record object
     '''
     def __init__(self):
-        self.type = 0
+        self.type = FLOW_DATA_ETHERNET_HEADER
         self.len = 0
         self.mac_length = 0
         self.src_mac = 0
@@ -518,6 +523,7 @@ class flowdata_record_ethernet():
         self.eth_type = 0
 
     def unpack(self, data):
+        self.len = len(data)
         pdata = xdrlib.Unpacker(data)
         self.mac_length = pdata.unpack_uint()
         self.src_mac = pdata.unpack_fopaque(6)
@@ -533,7 +539,7 @@ class flowdata_record_ethernet():
         packdata.pack_fopaque(6, self.src_mac)
         packdata.pack_fopaque(6, self.dst_mac)
         packdata.pack_uint(self.eth_type)
-        return packdata
+        return packdata.get_buffer()
 
 
     def __repr__(self):
@@ -551,7 +557,7 @@ class flowdata_record_ipv4():
         class is most simple form of a sample record object
     '''
     def __init__(self):
-        self.type = 0
+        self.type = FLOW_DATA_IPV4_HEADER
         self.len = 0
         self.data = None
         
@@ -566,7 +572,10 @@ class flowdata_record_ipv4():
             TO BE IMPLEMENTED
         '''
         #TODO: implement pack function
-        return None
+#        packdata = xdrlib.Packer() # create the packed object
+#        packdata.pack_fopaque(len(self.data), self.data)
+#        return packdata.get_buffer()
+        return self.data
 
     def __repr__(self):
         return("    IPv4PacketHeader: type: %d, len: %d\n" % (self.type, self.len))
@@ -576,26 +585,40 @@ class flowdata_record_extswitch():
     '''
         not defined sample record in  Flow or Counter samples
         class is most simple form of a sample record object
+        struct extended_switch {
+           unsigned int src_vlan;     /* The 802.1Q VLAN id of incoming frame */
+           unsigned int src_priority; /* The 802.1p priority of incoming frame */
+           unsigned int dst_vlan;     /* The 802.1Q VLAN id of outgoing frame */
+           unsigned int dst_priority; /* The 802.1p priority of outgoing frame */
+        }
     '''
     def __init__(self):
-        self.type = 0
+        self.type = FLOW_DATA_EXT_SWITCH
         self.len = 0
-        self.data = None
+        self.src_vlan = 0
+        self.src_priority = 0
+        self.dst_vlan = 0
+        self.dst_priority = 0
 
     def unpack(self, data):
-        #TODO: implement unpack function
-        self.data = data
+        self.len = len(data)
+        pdata = xdrlib.Unpacker(data)
+        self.src_vlan = pdata.unpack_uint()
+        self.src_priority = pdata.unpack_uint()
+        self.dst_vlan = pdata.unpack_uint()
+        self.dst_priority = pdata.unpack_uint()
 
     def pack(self):
-        '''
-            Pack data object
-            TO BE IMPLEMENTED
-        '''
-        #TODO: implement pack function
-        return self.data
+        packdata = xdrlib.Packer() # create the packed object
+        packdata.pack_uint(self.src_vlan)
+        packdata.pack_uint(self.src_priority)
+        packdata.pack_uint(self.dst_vlan)
+        packdata.pack_uint(self.dst_priority)
+        return packdata.get_buffer()
 
     def __repr__(self):
-        return("    ExtSwitchData: type: %d, len: %d\n" % (self.type, self.len))
+        return("    ExtSwitchData: type: %d, len: %d, vlan/prio src: %d/%d, dst: %d/%d\n" % 
+               (self.type, self.len, self.src_vlan, self.src_priority, self.dst_vlan, self.dst_priority))
 
 
 
@@ -609,7 +632,7 @@ class counter_record_if():
         class is most simple form of a sample record object
     '''
     def __init__(self):
-        self.type = 0
+        self.type = COUNTER_DATA_GENERIC
         self.len = 0
         self.data = None
 
@@ -636,7 +659,7 @@ class counter_record_ethernet():
         class is most simple form of a sample record object
     '''
     def __init__(self):
-        self.type = 0
+        self.type = COUNTER_DATA_ETHERNET
         self.len = 0
         self.data = None
 
@@ -662,7 +685,7 @@ class counter_record_tokenring():
         class is most simple form of a sample record object
     '''
     def __init__(self):
-        self.type = 0
+        self.type = COUNTER_DATA_TOKENRING
         self.len = 0
         self.data = None
 
@@ -688,7 +711,7 @@ class counter_record_vg():
         class is most simple form of a sample record object
     '''
     def __init__(self):
-        self.type = 0
+        self.type = COUNTER_DATA_VG
         self.len = 0
         self.data = None
 
@@ -714,7 +737,7 @@ class counter_record_vlan():
         class is most simple form of a sample record object
     '''
     def __init__(self):
-        self.type = 0
+        self.type = COUNTER_DATA_VLAN
         self.len = 0
         self.data = None
 
@@ -800,14 +823,14 @@ class IPv4Header ():
         self.ttl = header[8]
         self.protocol = header[9]
         self.chksum = header[10] * 256 + header[11]
-        self.src = ((header[15] << 24) +
-                    (header[14] << 16) +
-                    (header[13] << 8) +
-                    header[12])
-        self.dst = ((header[19] << 24) +
-                    (header[18] << 16) +
-                    (header[17] << 8) +
-                    header[16])
+        self.src = ((header[12] << 24) +
+                    (header[13] << 16) +
+                    (header[14] << 8) +
+                    header[15])
+        self.dst = ((header[16] << 24) +
+                    (header[17] << 16) +
+                    (header[18] << 8) +
+                    header[19])
         self.payload = None
         if len(header) > 20:
             if self.protocol == 6:
