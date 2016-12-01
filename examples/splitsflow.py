@@ -28,15 +28,20 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.2"
-__modified__ = "15-10-2016"
+__version__ = "0.3"
+__modified__ = "01-12-2016"
 
 import sys
+import os
+import ConfigParser
 import socket
 import threading
 import queue
 import struct
 import copy
+import options
+import daemon
+import optparse
 
 try:
     import sflow
@@ -50,14 +55,17 @@ except:
 # Configuration items
 # =============================================================================
 
-PREFIXLIST = "../bgp_prefixes.txt"
-COLLECTORLIST = "../collectorlist.txt"
-LOGFILE = "/var/log/splitsflow.log"
+config = {'configfile'    : '/etc/splitsflow.conf',
+          'loglevel'      : 'debug',
+          'prefixlist'    : '../bgp_prefixes.txt',
+          'collectorlist' : '../collectorlist.txt',
+          'logfile'       : '/var/log/splitsflow.log',
+          'outfile'       : '/var/log/splitsflowerr.log'
+         }
 
 # =============================================================================
 # End of configuration
 # =============================================================================
-
 
 seqnr_list = { 1: 1 }
 prefix_list = []    # consists of 3 elements: (network, masklen, ID)
@@ -127,6 +135,21 @@ class FlowThread(threading.Thread):
             self.count += len(data)
             self.queue.task_done()
             logger.debug("FlowThread: new count is " + str(self.count))
+
+
+def read_config(confg, cfgfile, context):
+    '''
+        read config file
+    '''
+#    cf = os.path.join(config['rootprefix'], os.path.relpath(conffile, '/'))
+    if os.path.isfile(cfgfile):
+        configs = ConfigParser.RawConfigParser()
+        configs.read(cfgfile)
+
+        for option in configs.options(context):
+            confg[option]=configs.get(context,option)
+
+    return confg
 
 
 def show_ipv4_addr(flow_datagram):
@@ -317,14 +340,13 @@ def split_records(flow_datagram):
     return retstr
 
 
+def mainroutine():
+    '''
+        main routine of the daemon process
+    '''
+    read_prefixlist(cfg['prefixlist'])
+    read_collectorlist(cfg['collectorlist'])
 
-if __name__ == '__main__':
-    
-    logger = util.set_logging(LOGFILE, "debug")
-
-    read_prefixlist(PREFIXLIST)
-    read_collectorlist(COLLECTORLIST)
-        
     listen_addr = ("0.0.0.0", 5700)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(listen_addr)
@@ -342,4 +364,32 @@ if __name__ == '__main__':
         retval = split_records(flow_data)
 #        if len(retval) > 1:
 #            sys.stdout.write(retval)
+
+
+
+if __name__ == '__main__':
+
+    cfg = read_config(config, config['configfile'], 'common')
+    parser = optparse.OptionParser(usage="usage: %prog [-c configfile] [-d] [-v]", version="%s" % __version__)
+    parser.add_option("-c", "--configfile",
+                  dest="configfile", type="string",
+                  help="Configuration file")
+    parser.add_option("-d", "--nodaemon", dest="nodaemon", default=False,
+                  action="store_true", help="Do not enter daemon mode")
+    parser.add_option("-v", "--verbose", dest="verbose", default=False,
+                  help="Show action of playlist player")
+
+    (options, args) = parser.parse_args()
+    if options.configfile:
+        cfg['configfile'] = options.configfile
+
     
+    logger = util.set_logging(cfg['logfile'], "debug")
+
+    if not options.nodaemon:
+        fileout = open(cfg['outfile'], "w")
+        with daemon.DaemonContext(stderr=fileout, stdout=fileout):
+            mainroutine()
+        fileout.close()
+    else:
+        mainroutine()
