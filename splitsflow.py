@@ -28,16 +28,20 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.1"
-from util import set_logging
-__modified__ = "19-09-2016"
+__version__ = "0.2"
+__modified__ = "15-10-2016"
 
 import sys
+import os
+import ConfigParser
 import socket
 import threading
 import queue
 import struct
 import copy
+import options
+import daemon
+import optparse
 
 try:
     import sflow
@@ -51,14 +55,17 @@ except:
 # Configuration items
 # =============================================================================
 
-PREFIXLIST = "../bgp_prefixes.txt"
-COLLECTORLIST = "collectorlist.txt"
-LOGFILE = "/var/log/splitsflow.log"
+config = {'configfile'    : '/etc/splitsflow.conf',
+          'loglevel'      : 'debug',
+          'prefixlist'    : '../bgp_prefixes.txt',
+          'collectorlist' : '../collectorlist.txt',
+          'logfile'       : '/var/log/splitsflow.log',
+          'outfile'       : '/var/log/splitsflowerr.log'
+         }
 
 # =============================================================================
 # End of configuration
 # =============================================================================
-
 
 seqnr_list = { 1: 1 }
 prefix_list = []    # consists of 3 elements: (network, masklen, ID)
@@ -124,11 +131,25 @@ class FlowThread(threading.Thread):
 
             #sock.sendto("%s%s" % (hdr, "".join(data)), (self.host, self.port))
             logger.debug("FlowThread: send data to %s on port %d (%d bytes)" % (self.host, self.port, len(data)))
-            util.hexdump_bytes(data)
             sock.sendto(data, (self.host, self.port))
             self.count += len(data)
             self.queue.task_done()
             logger.debug("FlowThread: new count is " + str(self.count))
+
+
+def read_config(confg, cfgfile, context):
+    '''
+        read config file
+    '''
+#    cf = os.path.join(config['rootprefix'], os.path.relpath(conffile, '/'))
+    if os.path.isfile(cfgfile):
+        configs = ConfigParser.RawConfigParser()
+        configs.read(cfgfile)
+
+        for option in configs.options(context):
+            confg[option]=configs.get(context,option)
+
+    return confg
 
 
 def show_ipv4_addr(flow_datagram):
@@ -173,9 +194,6 @@ def read_prefixlist(fn):
             prefix_list.append((netaddr, netmask, id_))
                     
     fp.close()
-    #print(prefix_list)
-    #for na, nm, ni in prefix_list:
-    #    print("%s / %s = %d" % (util.ip_to_string(na), util.ip_to_string(nm), ni))
 
 
 def read_collectorlist(fn):
@@ -231,7 +249,7 @@ def get_prefixid(ipaddr):
     global prefix_list
     
     id_ = 1
-    ipaddr = socket.ntohl(ipaddr)
+    #ipaddr = socket.ntohl(ipaddr)
     #ip = struct.unpack('!L',socket.inet_aton(ipaddr))[0]
     for netaddr, netmask, prefid in prefix_list:
         if (ipaddr & netmask) == (netaddr & netmask):
@@ -241,19 +259,25 @@ def get_prefixid(ipaddr):
     return id_
 
 
-def pack_flow(flow_dg, flow_record, seqnr):
+def pack_flow(flow_dg, flow_sample, flow_record, seqnr):
     """
         pack a flow record into a sflow FlowSample diagram
         Input: flow_dg is original datagram, for default values
                flow_record of type sflow.FlowSample(), is flow to pack
         Output: sflow Datagram
     """
+
+    # restructure flow datagram from flow records, to flow sample, to datagram    
+    sample_record = copy.deepcopy(flow_sample)
+    sample_record.num_flow_records = 1
+    sample_record.flow_records = []
+    sample_record.flow_records.append(flow_record)
     
     datagram = copy.deepcopy(flow_dg)
     datagram.sequence_number = seqnr
     datagram.num_samples = 1
     datagram.sample_records = []
-    datagram.sample_records.append(flow_record)
+    datagram.sample_records.append(sample_record)
   
     return datagram.pack()
 
@@ -266,8 +290,13 @@ def send_datagram(collector_id, datagram):
     """
     global collector_list
 
+    addr = ['127.0.0.2', 12345]
+    fdata = sflow.Datagram()
+    fdata.unpack(addr, datagram)
+    #sys.stdout.write(repr(fdata))
+
+
     try:
-        print(collector_list[collector_id].host)
         collector_list[collector_id].senddata(datagram)
     except KeyError:
         """ Do nothing, no collector defined for this datagram """
@@ -300,7 +329,7 @@ def split_records(flow_datagram):
                             if collectid != None:
                                 seqnr = get_nextseqnr(collectid)
                                 retstr += "  %s (%d), seqnr=%d\n" % (util.ip_to_string(payl.dst), collectid, seqnr)
-                                sflow_dg = pack_flow(flow_datagram, rec, seqnr)
+                                sflow_dg = pack_flow(flow_datagram, sample, rec, seqnr)
                                 send_datagram(collectid, sflow_dg)
                             else:
                                 retstr += "  unknown collector for IP " + util.ip_to_string(payl.dst)
@@ -311,33 +340,58 @@ def split_records(flow_datagram):
     return retstr
 
 
+def mainroutine():
+    '''
+        main routine of the daemon process
+    '''
+    read_prefixlist(cfg['prefixlist'])
+    read_collectorlist(cfg['collectorlist'])
 
-if __name__ == '__main__':
-    
-    logger = util.set_logging(LOGFILE, "debug")
-
-    read_prefixlist(PREFIXLIST)
-    print(read_collectorlist(COLLECTORLIST))
-    
-    for key in collector_list.keys():
-        item = collector_list[key]
-        print("ID: %d, host: %s, port: %d" % (int(item.c_id), item.host, item.port))
-    
     listen_addr = ("0.0.0.0", 5700)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(listen_addr)
 
+    print("Splitsflow application has started")
     while True:
         data, addr = sock.recvfrom(65535)
         flow_data = sflow.Datagram()
         flow_data.unpack(addr, data)
-        
-        #ip = show_ipv4_addr(flow_data)
 
+        #ip = show_ipv4_addr(flow_data)
         #sys.stdout.write(show_ipv4_addr(flow_data))
         #sys.stdout.write(repr(flow_data))
-        retval = split_records(flow_data)
-        if len(retval) > 1:
-            sys.stdout.write(retval)
-
         
+        retval = split_records(flow_data)
+#        if len(retval) > 1:
+#            sys.stdout.write(retval)
+
+
+
+if __name__ == '__main__':
+
+    cfg = read_config(config, config['configfile'], 'common')
+    parser = optparse.OptionParser(usage="usage: %prog [-c configfile] [-d] [-v]", version="%s" % __version__)
+    parser.add_option("-c", "--configfile",
+                  dest="configfile", type="string",
+                  help="Configuration file")
+    parser.add_option("-d", "--nodaemon", dest="nodaemon", default=False,
+                  action="store_true", help="Do not enter daemon mode")
+    parser.add_option("-v", "--verbose", dest="verbose", default=False,
+                  help="Show action of playlist player")
+
+    (options, args) = parser.parse_args()
+    if options.configfile:
+        cfg['configfile'] = options.configfile
+
+    
+    logger = util.set_logging(cfg['logfile'], "debug")
+
+    fileout = open(cfg['outfile'], "w")
+    if not options.nodaemon:
+        with daemon.DaemonContext(stderr=fileout, stdout=fileout):
+            mainroutine()
+        fileout.close()
+    else:
+        mainroutine()
+        
+    
