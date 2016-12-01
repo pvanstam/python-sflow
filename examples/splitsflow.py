@@ -365,8 +365,6 @@ def mainroutine():
 #        if len(retval) > 1:
 #            sys.stdout.write(retval)
 
-
-
 if __name__ == '__main__':
 
     cfg = read_config(config, config['configfile'], 'common')
