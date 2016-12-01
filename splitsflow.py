@@ -28,8 +28,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.2"
-__modified__ = "15-10-2016"
+__version__ = "0.3"
+__modified__ = "01-12-2016"
 
 import sys
 import os
