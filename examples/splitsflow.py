@@ -28,20 +28,20 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.3"
+__version__ = "0.3.1"
 __modified__ = "01-12-2016"
 
-import sys
 import os
-import ConfigParser
+import sys
+import configparser
+import options
+import daemon
+import optparse
 import socket
 import threading
 import queue
 import struct
 import copy
-import options
-import daemon
-import optparse
 
 try:
     import sflow
@@ -66,6 +66,7 @@ config = {'configfile'    : '/etc/splitsflow.conf',
 # =============================================================================
 # End of configuration
 # =============================================================================
+
 
 seqnr_list = { 1: 1 }
 prefix_list = []    # consists of 3 elements: (network, masklen, ID)
@@ -141,9 +142,8 @@ def read_config(confg, cfgfile, context):
     '''
         read config file
     '''
-#    cf = os.path.join(config['rootprefix'], os.path.relpath(conffile, '/'))
     if os.path.isfile(cfgfile):
-        configs = ConfigParser.RawConfigParser()
+        configs = configparser.RawConfigParser()
         configs.read(cfgfile)
 
         for option in configs.options(context):
@@ -340,13 +340,14 @@ def split_records(flow_datagram):
     return retstr
 
 
+
 def mainroutine():
     '''
         main routine of the daemon process
     '''
     read_prefixlist(cfg['prefixlist'])
     read_collectorlist(cfg['collectorlist'])
-
+        
     listen_addr = ("0.0.0.0", 5700)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(listen_addr)
@@ -364,9 +365,8 @@ def mainroutine():
         retval = split_records(flow_data)
 #        if len(retval) > 1:
 #            sys.stdout.write(retval)
-
+    
 if __name__ == '__main__':
-
     cfg = read_config(config, config['configfile'], 'common')
     parser = optparse.OptionParser(usage="usage: %prog [-c configfile] [-d] [-v]", version="%s" % __version__)
     parser.add_option("-c", "--configfile",
@@ -381,11 +381,10 @@ if __name__ == '__main__':
     if options.configfile:
         cfg['configfile'] = options.configfile
 
-    
     logger = util.set_logging(cfg['logfile'], "debug")
 
+    fileout = open(cfg['outfile'], "w")
     if not options.nodaemon:
-        fileout = open(cfg['outfile'], "w")
         with daemon.DaemonContext(stderr=fileout, stdout=fileout):
             mainroutine()
         fileout.close()
