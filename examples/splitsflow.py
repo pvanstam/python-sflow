@@ -34,7 +34,7 @@ __modified__ = "01-12-2016"
 import os
 import sys
 import configparser
-import options
+import argparse
 import daemon
 import optparse
 import socket
@@ -368,13 +368,13 @@ def mainroutine():
     
 if __name__ == '__main__':
     cfg = read_config(config, config['configfile'], 'common')
-    parser = optparse.OptionParser(usage="usage: %prog [-c configfile] [-d] [-v]", version="%s" % __version__)
-    parser.add_option("-c", "--configfile",
+    parser = argparse.ArgumentParser(usage="usage: %prog [-c configfile] [-d] [-v]", version="%s" % __version__)
+    parser.add_argument("-c", "--configfile",
                   dest="configfile", type="string",
                   help="Configuration file")
-    parser.add_option("-d", "--nodaemon", dest="nodaemon", default=False,
+    parser.add_argument("-d", "--nodaemon", dest="nodaemon", default=False,
                   action="store_true", help="Do not enter daemon mode")
-    parser.add_option("-v", "--verbose", dest="verbose", default=False,
+    parser.add_argument("-v", "--verbose", dest="verbose", default=False,
                   help="Show action of playlist player")
 
     (options, args) = parser.parse_args()
