@@ -366,7 +366,6 @@ def mainroutine():
 #            sys.stdout.write(retval)
     
 if __name__ == '__main__':
-    cfg = read_config(config, config['configfile'], 'common')
     parser = argparse.ArgumentParser(description="Split sFlow data based on destination AS number")
     parser.add_argument("-c", "--configfile", help="Configuration file")
     parser.add_argument("-d", "--nodaemon", default=False,
@@ -377,8 +376,9 @@ if __name__ == '__main__':
 #    (options, args) = parser.parse_args()
     options = parser.parse_args()
     if options.configfile != None:
-        cfg['configfile'] = options.configfile
+        config['configfile'] = options.configfile
 
+    cfg = read_config(config, config['configfile'], 'common')
     logger = util.set_logging(cfg['logfile'], "debug")
 
     fileout = open(cfg['outfile'], "w")
