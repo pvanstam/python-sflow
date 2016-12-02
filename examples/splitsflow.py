@@ -348,9 +348,10 @@ def mainroutine():
     read_prefixlist(cfg['prefixlist'])
     read_collectorlist(cfg['collectorlist'])
         
-    listen_addr = ("0.0.0.0", cfg['port'])
+    listen_addr = ("0.0.0.0", int(cfg['port']))
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(listen_addr)
+#TODO: test creation of socket
 
     print("Splitsflow application has started")
     while True:
