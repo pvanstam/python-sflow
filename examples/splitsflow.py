@@ -59,7 +59,8 @@ config = {'configfile'    : '/etc/splitsflow.conf',
           'prefixlist'    : '../bgp_prefixes.txt',
           'collectorlist' : '../collectorlist.txt',
           'logfile'       : '/var/log/splitsflow.log',
-          'outfile'       : '/var/log/splitsflowerr.log'
+          'outfile'       : '/var/log/splitsflowerr.log',
+          'port'          : '5700'
          }
 
 # =============================================================================
@@ -347,7 +348,7 @@ def mainroutine():
     read_prefixlist(cfg['prefixlist'])
     read_collectorlist(cfg['collectorlist'])
         
-    listen_addr = ("0.0.0.0", 5700)
+    listen_addr = ("0.0.0.0", cfg['port'])
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(listen_addr)
 
