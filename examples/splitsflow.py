@@ -36,7 +36,6 @@ import sys
 import configparser
 import argparse
 import daemon
-import optparse
 import socket
 import threading
 import queue
@@ -368,17 +367,16 @@ def mainroutine():
     
 if __name__ == '__main__':
     cfg = read_config(config, config['configfile'], 'common')
-    parser = argparse.ArgumentParser(usage="usage: %prog [-c configfile] [-d] [-v]", version="%s" % __version__)
-    parser.add_argument("-c", "--configfile",
-                  dest="configfile", type="string",
-                  help="Configuration file")
-    parser.add_argument("-d", "--nodaemon", dest="nodaemon", default=False,
-                  action="store_true", help="Do not enter daemon mode")
-    parser.add_argument("-v", "--verbose", dest="verbose", default=False,
-                  help="Show action of playlist player")
+    parser = argparse.ArgumentParser(description="Split sFlow data based on destination AS number")
+    parser.add_argument("-c", "--configfile", help="Configuration file")
+    parser.add_argument("-d", "--nodaemon", default=False,
+                        action='store_true', help="Do not enter daemon mode")
+    parser.add_argument("-v", "--verbose", default=False,
+                        help="Show action of playlist player")
 
-    (options, args) = parser.parse_args()
-    if options.configfile:
+#    (options, args) = parser.parse_args()
+    options = parser.parse_args()
+    if options.configfile != None:
         cfg['configfile'] = options.configfile
 
     logger = util.set_logging(cfg['logfile'], "debug")
