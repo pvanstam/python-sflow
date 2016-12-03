@@ -28,14 +28,15 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.3.1"
-__modified__ = "01-12-2016"
+__version__ = "0.4"
+__modified__ = "03-12-2016"
 
 import os
 import sys
 import configparser
 import argparse
 import daemon
+import signal
 import socket
 import threading
 import queue
@@ -56,8 +57,8 @@ except:
 
 config = {'configfile'    : '/etc/splitsflow.conf',
           'loglevel'      : 'debug',
-          'prefixlist'    : '../bgp_prefixes.txt',
-          'collectorlist' : '../collectorlist.txt',
+          'prefixlist'    : 'bgp_prefixes.txt',
+          'collectorlist' : 'collectorlist.txt',
           'logfile'       : '/var/log/splitsflow.log',
           'outfile'       : '/var/log/splitsflowerr.log',
           'port'          : '5700'
@@ -340,11 +341,25 @@ def split_records(flow_datagram):
     return retstr
 
 
+def sighup_handler(signum, frame):
+    '''
+        Handle SIGHUP event, reload prefix list
+    '''
+    logger.debug("Received SIGHUP, reloading prefix list")
+    read_prefixlist(cfg['prefixlist'])
+    read_collectorlist(cfg['collectorlist'])
+
 
 def mainroutine():
     '''
         main routine of the daemon process
     '''
+    prevlen=0
+
+    # Register sighup_handler to be called on SIGHUP
+    signal.signal(signal.SIGHUP, sighup_handler)
+
+    logger = util.set_logging(cfg['logfile'], "debug")
     read_prefixlist(cfg['prefixlist'])
     read_collectorlist(cfg['collectorlist'])
         
@@ -353,19 +368,33 @@ def mainroutine():
     sock.bind(listen_addr)
 #TODO: test creation of socket
 
-    print("Splitsflow application has started")
-    while True:
-        data, addr = sock.recvfrom(65535)
-        flow_data = sflow.Datagram()
-        flow_data.unpack(addr, data)
+    logger.info("Splitsflow application has started")
+    try:
+        while True:
+            # compare prefix list
+            newlen = len(prefix_list)
+            if newlen != prevlen:
+                logger.debug("Prefix list changed!")
+                prevlen = newlen
 
-        #ip = show_ipv4_addr(flow_data)
-        #sys.stdout.write(show_ipv4_addr(flow_data))
-        #sys.stdout.write(repr(flow_data))
+            data, addr = sock.recvfrom(65535)
+            flow_data = sflow.Datagram()
+            flow_data.unpack(addr, data)
+    
+            #ip = show_ipv4_addr(flow_data)
+            #sys.stdout.write(show_ipv4_addr(flow_data))
+            #sys.stdout.write(repr(flow_data))
+            
+            retval = split_records(flow_data)
+    #        if len(retval) > 1:
+    #            sys.stdout.write(retval)
+    except KeyboardInterrupt:
+        # stop threads if any
+        logger.info("Keyboard interrupt or SIGINT received. Stopping program")
+        return
         
-        retval = split_records(flow_data)
-#        if len(retval) > 1:
-#            sys.stdout.write(retval)
+    # exit main routine and program
+
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Split sFlow data based on destination AS number")
@@ -381,7 +410,6 @@ if __name__ == '__main__':
         config['configfile'] = options.configfile
 
     cfg = read_config(config, config['configfile'], 'common')
-    logger = util.set_logging(cfg['logfile'], "debug")
 
     fileout = open(cfg['outfile'], "w")
     if not options.nodaemon:
