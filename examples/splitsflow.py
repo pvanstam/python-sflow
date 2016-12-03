@@ -28,7 +28,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.4"
+__version__ = "0.4.1"
 __modified__ = "03-12-2016"
 
 import os
@@ -354,6 +354,7 @@ def mainroutine():
     '''
         main routine of the daemon process
     '''
+    global logger
     prevlen=0
 
     # Register sighup_handler to be called on SIGHUP
