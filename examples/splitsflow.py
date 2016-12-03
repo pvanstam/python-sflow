@@ -72,7 +72,7 @@ config = {'configfile'    : '/etc/splitsflow.conf',
 seqnr_list = { 1: 1 }
 prefix_list = []    # consists of 3 elements: (network, masklen, ID)
 collector_list = {} # dictionary of class Collector()
-
+logger = None
 
 class Collector():
     """
