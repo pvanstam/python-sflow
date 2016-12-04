@@ -1,10 +1,14 @@
-
+03-12-2016
+* splitsflow.py - v0.4.1
+  * daemon mode
+  * support for signals HUP and INT, SIGHUP reloads collector and prefix list; SIGINT stops program
+  * splitting flow sample records based on destination IP; sent them to destinations in collectors list
 
 19-09-2016
 * sflow - v.0.1: added pack functions to be able to send sFlow data
 * splitsflow: v.0.1:
   * read from network
-  * split sFlow Sample records based on source IP prefix
+  * split sFlow Sample records based on destination IP prefix
   * pack Sample records into separate sFlow packets
 
 23-06-2016
