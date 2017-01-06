@@ -1,3 +1,9 @@
+Release notes for python-sflow library and splitsflow application
+
+06-01-2017
+* splitsflow.py - v0.4.2
+  * bug: logger always initialized with 'debug'. Modified in cfg['loglevel']
+
 03-12-2016
 * splitsflow.py - v0.4.1
   * daemon mode

@@ -28,8 +28,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.4.1"
-__modified__ = "03-12-2016"
+__version__ = "0.4.2"
+__modified__ = "06-01-2017"
 
 import os
 import sys
@@ -56,7 +56,7 @@ except:
 # =============================================================================
 
 config = {'configfile'    : '/etc/splitsflow.conf',
-          'loglevel'      : 'debug',
+          'loglevel'      : 'info',
           'prefixlist'    : 'bgp_prefixes.txt',
           'collectorlist' : 'collectorlist.txt',
           'logfile'       : '/var/log/splitsflow.log',
@@ -79,7 +79,7 @@ class Collector():
         Collector is a list of collector's config
         Collector itself: Ip, port
         Thread for delivering flows
-        A queue is created tom communicate with collectors thread for sending data
+        A queue is created to communicate with collector's thread for sending data
     """
     def __init__(self, c_id, host, port):
         self.c_id = c_id
@@ -345,7 +345,7 @@ def sighup_handler(signum, frame):
     '''
         Handle SIGHUP event, reload prefix list
     '''
-    logger.debug("Received SIGHUP, reloading prefix list")
+    logger.info("Received SIGHUP, reloading prefix list")
     read_prefixlist(cfg['prefixlist'])
     read_collectorlist(cfg['collectorlist'])
 
@@ -360,7 +360,7 @@ def mainroutine():
     # Register sighup_handler to be called on SIGHUP
     signal.signal(signal.SIGHUP, sighup_handler)
 
-    logger = util.set_logging(cfg['logfile'], "debug")
+    logger = util.set_logging(cfg['logfile'], cfg['loglevel'])
     read_prefixlist(cfg['prefixlist'])
     read_collectorlist(cfg['collectorlist'])
         
