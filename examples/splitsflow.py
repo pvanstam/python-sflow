@@ -28,8 +28,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.4.2"
-__modified__ = "06-01-2017"
+__version__ = "0.4.3"
+__modified__ = "30-03-2017"
 
 import os
 import sys
@@ -336,8 +336,9 @@ def split_records(flow_datagram):
                                 retstr += "  unknown collector for IP " + util.ip_to_string(payl.dst)
 #                else:
 #                    retstr += "  " + str(rec.type) + "\n"
-#        else:
-#            retstr += "  CounterSample\n"
+        else: # CounterSample
+            retstr += "  CounterSample\n"
+            logger.debug(repr(sample))
     return retstr
 
 

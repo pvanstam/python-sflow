@@ -3,6 +3,8 @@ Release notes for python-sflow library and splitsflow application
 30-03-2017
 * sflow.py - v 0.2.1: raise EOFError occured in CounterSample.unpack() routine
   * print statements to see what's going - temporary. To be captured by calling routine
+* splisflow.py - v0.4.3
+  * logger.debug repr(sample) in case of CounterSample object
 
 06-01-2017
 * splitsflow.py - v0.4.2
