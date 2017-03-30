@@ -42,8 +42,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 """
-__version__ = "0.2"
-__modified__ = "15-10-2016"
+__version__ = "0.2.1"
+__modified__ = "30-03-2017"
 
 import sys
 import xdrlib
@@ -338,15 +338,18 @@ class CounterSample():
             unpack elements in data for CounterSample sFlow record
         '''
         pdata = xdrlib.Unpacker(data)
-        self.sequence_number = pdata.unpack_uint()
-        self.source_id = pdata.unpack_uint()
-        self.num_counter_records = pdata.unpack_uint()
-        
-        for i in range(self.num_counter_records):
-            cnt_record = get_sample_record_object(SAMPLE_DATA_COUNTER_RECORD, 
-                                                  pdata.unpack_uint(),
-                                                  pdata.unpack_bytes())
-            self.counter_records.append(cnt_record)
+        print(data)
+        print(len(data))
+        if data != None and len(data) > 0:
+            self.sequence_number = pdata.unpack_uint()
+            self.source_id = pdata.unpack_uint()
+            self.num_counter_records = pdata.unpack_uint()
+            
+            for i in range(self.num_counter_records):
+                cnt_record = get_sample_record_object(SAMPLE_DATA_COUNTER_RECORD, 
+                                                      pdata.unpack_uint(),
+                                                      pdata.unpack_bytes())
+                self.counter_records.append(cnt_record)
 
 
     def pack(self):
