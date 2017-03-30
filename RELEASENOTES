@@ -1,8 +1,10 @@
 Release notes for python-sflow library and splitsflow application
 
 30-03-2017
-* sflow.py - v 0.2.1: raise EOFError occured in CounterSample.unpack() routine
+* sflow.py - v 0.2.2: raise EOFError occured in CounterSample.unpack() routine
   * print statements to see what's going - temporary. To be captured by calling routine
+  * added (template) structures for Counters type 6-10 (ieee80211, lag, slow_path, ib, sfp)
+  * structure for LAG counter implemented
 * splisflow.py - v0.4.3
   * logger.debug repr(sample) in case of CounterSample object
 

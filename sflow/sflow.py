@@ -42,7 +42,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 """
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 __modified__ = "30-03-2017"
 
 import sys
@@ -57,9 +57,11 @@ except:
 
 
 # Constants for the sample_data member of 'struct sample_record'
-# (p. 32).  See pp. 29-31 for the meaning of these values.
+# numbers in: http://www.sflow.org/developers/structures.php
 SAMPLE_DATA_FLOW_RECORD = 1
 SAMPLE_DATA_COUNTER_RECORD = 2
+SAMPLE_DATA_FLOW_EXPANDED_RECORD = 3
+SAMPLE_DATA_COUNTER_EXPANDED_RECORD = 4
 
 
 # Constants for the flow_format member of 'struct flow_record'
@@ -87,6 +89,11 @@ COUNTER_DATA_ETHERNET= 2
 COUNTER_DATA_TOKENRING = 3
 COUNTER_DATA_VG = 4
 COUNTER_DATA_VLAN = 5
+COUNTER_DATA_IEEE80211 = 6
+COUNTER_DATA_LAG_PORT = 7
+COUNTER_DATA_SLOW_PATH = 8
+COUNTER_DATA_IB = 9
+COUNTER_DATA_SFP = 10
 COUNTER_DATA_PROCESSOR = 1001
 
 # Constants for 'enum header_protocol'.  See p.35 of the sFlow v5
@@ -110,6 +117,12 @@ HEADER_PROTO_POS = 14
 # Constants decribing the values of the 'type' field of 
 #IEEE802.3/IEEE802.1Q headers.
 ETHER_TYPE_IEEE8021Q = 0x8100
+
+'''
+    typedefs:
+    typedef opaque mac[6]; -> (un)pack_fopaque(6)
+
+'''
 
 """
     Top level class of sFlow packets
@@ -396,6 +409,9 @@ def get_sample_record_object(sample_type, record_type, data):
         elif record_type == FLOW_DATA_IPV4_HEADER:
             # TODO: import from: read_sampled_ipv4(up_flow_data)
             record = flowdata_record_ipv4()
+        elif record_type == FLOW_DATA_IPV6_HEADER:
+            # TODO: import from: read_sampled_ipv6(up_flow_data)
+            record = flowdata_record_ipv6()
         elif record_type == FLOW_DATA_EXT_SWITCH:
             record = flowdata_record_extswitch()
         else:
@@ -404,7 +420,6 @@ def get_sample_record_object(sample_type, record_type, data):
     elif sample_type == SAMPLE_DATA_COUNTER_RECORD:
         
         if record_type == COUNTER_DATA_GENERIC:
-            # TODO: import from: read_if_counters(up_counter_data)
             record = counter_record_if()
         elif record_type == COUNTER_DATA_ETHERNET:
             # TODO: import from: read_ethernet_counters(up_flow_data)
@@ -418,6 +433,20 @@ def get_sample_record_object(sample_type, record_type, data):
         elif record_type == COUNTER_DATA_VLAN:
             # TODO: import from: read_vlan_counters(up_flow_data)
             record = counter_record_vlan()
+        elif record_type == COUNTER_DATA_IEEE80211:
+            # TODO: implement ieee80311 class
+            record = counter_record_ieee80211()
+        elif record_type == COUNTER_DATA_LAG_PORT:
+            record = counter_record_lag()
+        elif record_type == COUNTER_DATA_SLOW_PATH:
+            # TODO: implement slow_path class
+            record = counter_record_slow_path()
+        elif record_type == COUNTER_DATA_IB: # InfiniBand
+            # TODO: implement infiniband class
+            record = counter_record_ib()
+        elif record_type == COUNTER_DATA_SFP:
+            # TODO: implement SFP class
+            record = counter_record_sfp()
         else:
             record = sample_record_unknown()
 
@@ -554,8 +583,20 @@ class flowdata_record_ethernet():
 
 class flowdata_record_ipv4():
     '''
-        not defined sample record in  Flow or Counter samples
-        class is most simple form of a sample record object
+        struct sampled_ipv4 {
+           unsigned int length;     /* The length of the IP packet excluding 
+                                       lower layer encapsulations */
+           unsigned int protocol;   /* IP Protocol type
+                                       (for example, TCP = 6, UDP = 17) */
+           ip_v4 src_ip;            /* Source IP Address */
+           ip_v4 dst_ip;            /* Destination IP Address */
+           unsigned int src_port;   /* TCP/UDP source port number or equivalent */
+           unsigned int dst_port;   /* TCP/UDP destination port number or equivalent */
+           unsigned int tcp_flags;  /* TCP flags */
+           unsigned int tos;        /* IP type of service */
+        }
+
+        not implemented yet
     '''
     def __init__(self):
         self.type = FLOW_DATA_IPV4_HEADER
@@ -580,6 +621,47 @@ class flowdata_record_ipv4():
 
     def __repr__(self):
         return("    IPv4PacketHeader: type: %d, len: %d\n" % (self.type, self.len))
+
+class flowdata_record_ipv6():
+    '''
+        struct sampled_ipv6 {
+           unsigned int length;     /* The length of the IP packet excluding
+                                       lower layer encapsulations */
+           unsigned int protocol;   /* IP next header
+                                       (for example, TCP = 6, UDP = 17) */
+           ip_v6 src_ip;            /* Source IP Address */
+           ip_v6 dst_ip;            /* Destination IP Address */
+           unsigned int src_port;   /* TCP/UDP source port number or equivalent */
+           unsigned int dst_port;   /* TCP/UDP destination port number or equivalent */
+           unsigned int tcp_flags;  /* TCP flags */
+           unsigned int priority;   /* IP priority */
+        }
+ 
+        not implemented yet
+    '''
+    def __init__(self):
+        self.type = FLOW_DATA_IPV6_HEADER
+        self.len = 0
+        self.data = None
+        
+    def unpack(self, data):
+        #TODO: implement unpack function
+        self.data = data
+        return None
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        #TODO: implement pack function
+#        packdata = xdrlib.Packer() # create the packed object
+#        packdata.pack_fopaque(len(self.data), self.data)
+#        return packdata.get_buffer()
+        return self.data
+
+    def __repr__(self):
+        return("    IPv6PacketHeader: type: %d, len: %d\n" % (self.type, self.len))
 
 
 class flowdata_record_extswitch():
@@ -629,35 +711,132 @@ class flowdata_record_extswitch():
 """
 class counter_record_if():
     '''
-        not defined sample record in  Flow or Counter samples
-        class is most simple form of a sample record object
+        struct if_counters {
+           unsigned int ifIndex;
+           unsigned int ifType;
+           unsigned hyper ifSpeed;
+           unsigned int ifDirection;    /* derived from MAU MIB (RFC 2668)
+                                           0 = unkown, 1=full-duplex, 2=half-duplex,
+                                           3 = in, 4=out */
+           unsigned int ifStatus;       /* bit field with the following bits assigned
+                                           bit 0 = ifAdminStatus (0 = down, 1 = up)
+                                           bit 1 = ifOperStatus (0 = down, 1 = up) */
+           unsigned hyper ifInOctets;
+           unsigned int ifInUcastPkts;
+           unsigned int ifInMulticastPkts;
+           unsigned int ifInBroadcastPkts;
+           unsigned int ifInDiscards;
+           unsigned int ifInErrors;
+           unsigned int ifInUnknownProtos;
+           unsigned hyper ifOutOctets;
+           unsigned int ifOutUcastPkts;
+           unsigned int ifOutMulticastPkts;
+           unsigned int ifOutBroadcastPkts;
+           unsigned int ifOutDiscards;
+           unsigned int ifOutErrors;
+           unsigned int ifPromiscuousMode;
+        }
+        
+        not implemented yet
     '''
-    def __init__(self):
+
+    def __init__(self, up):
         self.type = COUNTER_DATA_GENERIC
         self.len = 0
         self.data = None
 
+        self.ifIndex = 0
+        self.ifType = 0
+        self.ifSpeed = 0
+        self.ifDirection = 0
+        self.ifStatus = 0
+        self.ifInOctets = 0
+        self.ifInUcastPkts = 0
+        self.ifInMulticastPkts = 0
+        self.ifInBroadcastPkts = 0
+        self.ifInDiscards = 0
+        self.ifInErrors = 0
+        self.ifInUnknownProtos = 0
+        self.ifOutOctets = 0
+        self.ifOutUcastPkts = 0
+        self.ifOutMulticastPkts = 0
+        self.ifOutBroadcastPkts = 0
+        self.ifOutDiscards = 0
+        self.ouifOutErrorst_errors = 0
+        self.ifPromiscuousMode = 0
+
     def unpack(self, data):
-        #TODO: implement unpack function
-        self.data = data
+        self.len = len(data)
+        pdata = xdrlib.Unpacker(data)
+        self.ifIndex = pdata.unpack_uint()
+        self.ifType = pdata.unpack_uint()
+        self.ifSpeed = pdata.unpack_uhyper()
+        self.ifDirection = pdata.unpack_uint()
+        self.ifStatus = pdata.unpack_uint()
+        self.ifInOctets = pdata.unpack_uhyper()
+        self.ifInUcastPkts = pdata.unpack_uint()
+        self.ifInMulticastPkts = pdata.unpack_uint()
+        self.ifInBroadcastPkts = pdata.unpack_uint()
+        self.ifInDiscards = pdata.unpack_uint()
+        self.ifInErrors = pdata.unpack_uint()
+        self.ifInUnknownProtos = pdata.unpack_uint()
+        self.ifOutOctets = pdata.unpack_uhyper()
+        self.ifOutUcastPkts = pdata.unpack_uint()
+        self.ifOutMulticastPkts = pdata.unpack_uint()
+        self.ifOutBroadcastPkts = pdata.unpack_uint()
+        self.ifOutDiscards = pdata.unpack_uint()
+        self.ouifOutErrorst_errors = pdata.unpack_uint()
+        self.ifPromiscuousMode = pdata.unpack_uint()
 
     def pack(self):
-        '''
-            Pack data object
-            TO BE IMPLEMENTED
-        '''
-        #TODO: implement pack function
-        return self.data
+        packdata = xdrlib.Packer() # create the packed object
+        packdata.pack_uint(self.ifIndex)
+        packdata.pack_uint(self.ifType)
+        packdata.pack_uhyper(self.ifSpeed)
+        packdata.pack_uint(self.ifDirection)
+        packdata.pack_uint(self.ifStatus)
+        packdata.pack_uhyper(self.ifInOctets)
+        packdata.pack_uint(self.ifInUcastPkts)
+        packdata.pack_uint(self.ifInMulticastPkts)
+        packdata.pack_uint(self.ifInBroadcastPkts)
+        packdata.pack_uint(self.ifInDiscards)
+        packdata.pack_uint(self.ifInErrors)
+        packdata.pack_uint(self.ifInUnknownProtos)
+        packdata.pack_uhyper(self.ifOutOctets)
+        packdata.pack_uint(self.ifOutUcastPkts)
+        packdata.pack_uint(self.ifOutMulticastPkts)
+        packdata.pack_uint(self.ifOutBroadcastPkts)
+        packdata.pack_uint(self.ifOutDiscards)
+        packdata.pack_uint(self.ouifOutErrorst_errors)
+        packdata.pack_uint(self.ifPromiscuousMode)
+        return packdata.get_buffer()
 
     def __repr__(self):
-        return("    CountersIf: type: %d, len: %d\n" % (self.type, self.len))
+        return("    CountersIf: type: %d, len: %d, idx: %d, speed: %s, in_octets: %d, out_octets: %d\n" %
+                (self.type, self.len, self.ifIndex,
+                 util.speed_to_string(self.ifSpeed), self.ifInOctets, self.ifOutOctets))
 
 
 
 class counter_record_ethernet():
     '''
-        not defined sample record in  Flow or Counter samples
-        class is most simple form of a sample record object
+        struct ethernet_counters {
+           unsigned int dot3StatsAlignmentErrors;
+           unsigned int dot3StatsFCSErrors;
+           unsigned int dot3StatsSingleCollisionFrames;
+           unsigned int dot3StatsMultipleCollisionFrames;
+           unsigned int dot3StatsSQETestErrors;
+           unsigned int dot3StatsDeferredTransmissions;
+           unsigned int dot3StatsLateCollisions;
+           unsigned int dot3StatsExcessiveCollisions;
+           unsigned int dot3StatsInternalMacTransmitErrors;
+           unsigned int dot3StatsCarrierSenseErrors;
+           unsigned int dot3StatsFrameTooLongs;
+           unsigned int dot3StatsInternalMacReceiveErrors;
+           unsigned int dot3StatsSymbolErrors;
+        }
+        
+        not implemented yet
     '''
     def __init__(self):
         self.type = COUNTER_DATA_ETHERNET
@@ -756,6 +935,197 @@ class counter_record_vlan():
   
     def __repr__(self):
         return("    CountersVLAN: type: %d, len: %d\n" % (self.type, self.len))
+
+
+class counter_record_ieee80211():
+    '''
+        Counter IEEE 802.11 structure
+        not defined sample record in  Flow or Counter samples
+        class is most simple form of a sample record object
+    '''
+    def __init__(self):
+        self.type = COUNTER_DATA_IEEE80211
+        self.len = 0
+        self.data = None
+
+    def unpack(self, data):
+        #TODO: implement unpack function
+        self.data = data
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        #TODO: implement pack function
+        return self.data
+  
+    def __repr__(self):
+        return("    CountersIEEE80211: type: %d, len: %d\n" % (self.type, self.len))
+
+
+class counter_record_lag():
+    '''
+        Counter LAG structure (Link Aggregation Group)
+
+        struct lag_port_stats {
+          mac dot3adAggPortActorSystemID;
+          mac dot3adAggPortPartnerOperSystemID;
+          unsigned int dot3adAggPortAttachedAggID;
+          opaque dot3adAggPortState[4]; /*
+                                     Bytes are assigned in following order:
+                                     byte 0, value dot3adAggPortActorAdminState
+                                     byte 1, value dot3adAggPortActorOperState
+                                     byte 2, value dot3adAggPortPartnerAdminState
+                                     byte 3, value dot3adAggPortPartnerOperState
+                                         */
+          unsigned int dot3adAggPortStatsLACPDUsRx;
+          unsigned int dot3adAggPortStatsMarkerPDUsRx;
+          unsigned int dot3adAggPortStatsMarkerResponsePDUsRx;
+          unsigned int dot3adAggPortStatsUnknownRx;
+          unsigned int dot3adAggPortStatsIllegalRx;
+          unsigned int dot3adAggPortStatsLACPDUsTx;
+          unsigned int dot3adAggPortStatsMarkerPDUsTx;
+          unsigned int dot3adAggPortStatsMarkerResponsePDUsTx;
+        }
+
+    '''
+    def __init__(self):
+        self.type = COUNTER_DATA_LAG_PORT
+        self.len = 0
+        self.dot3adAggPortActorSystemID = 0
+        self.dot3adAggPortPartnerOperSystemID = 0
+        self.dot3adAggPortAttachedAggID = 0
+        self.dot3adAggPortState = 0
+        self.dot3adAggPortStatsLACPDUsRx = 0
+        self.dot3adAggPortStatsMarkerPDUsRx = 0
+        self.dot3adAggPortStatsMarkerResponsePDUsRx = 0
+        self.dot3adAggPortStatsUnknownRx = 0
+        self.dot3adAggPortStatsIllegalRx = 0
+        self.dot3adAggPortStatsLACPDUsTx = 0
+        self.dot3adAggPortStatsMarkerPDUsTx = 0
+        self.dot3adAggPortStatsMarkerResponsePDUsTx = 0        
+
+    def unpack(self, data):
+        self.len = len(data)
+        pdata = xdrlib.Unpacker(data)
+        self.dot3adAggPortActorSystemID = pdata.unpack_fopaque(6)
+        self.dot3adAggPortPartnerOperSystemID = pdata.unpack_fopaque(6)
+        self.dot3adAggPortAttachedAggID = pdata.unpack_uint()
+        self.dot3adAggPortState = pdata.unpack_fopaque(4)
+        self.dot3adAggPortStatsLACPDUsRx = pdata.unpack_uint()
+        self.dot3adAggPortStatsMarkerPDUsRx = pdata.unpack_uint()
+        self.dot3adAggPortStatsMarkerResponsePDUsRx = pdata.unpack_uint()
+        self.dot3adAggPortStatsUnknownRx = pdata.unpack_uint()
+        self.dot3adAggPortStatsIllegalRx = pdata.unpack_uint()
+        self.dot3adAggPortStatsLACPDUsTx = pdata.unpack_uint()
+        self.dot3adAggPortStatsMarkerPDUsTx = pdata.unpack_uint()
+        self.dot3adAggPortStatsMarkerResponsePDUsTx = pdata.unpack_uint()        
+
+
+    def pack(self):
+        packdata = xdrlib.Packer() # create the packed object
+        packdata.pack_fopaque(6, self.dot3adAggPortActorSystemID)
+        packdata.pack_fopaque(6, self.dot3adAggPortPartnerOperSystemID)
+        packdata.pack_uint(self.dot3adAggPortAttachedAggID)
+        packdata.pack_fopaque(4, self.dot3adAggPortState)
+        packdata.pack_uint(self.dot3adAggPortStatsLACPDUsRx)
+        packdata.pack_uint(self.dot3adAggPortStatsMarkerPDUsRx)
+        packdata.pack_uint(self.dot3adAggPortStatsMarkerResponsePDUsRx)
+        packdata.pack_uint(self.dot3adAggPortStatsUnknownRx)
+        packdata.pack_uint(self.dot3adAggPortStatsIllegalRx)
+        packdata.pack_uint(self.dot3adAggPortStatsLACPDUsTx)
+        packdata.pack_uint(self.dot3adAggPortStatsMarkerPDUsTx)
+        packdata.pack_uint(self.dot3adAggPortStatsMarkerResponsePDUsTx)
+        return packdata.get_buffer()
+
+  
+    def __repr__(self):
+        return("    CountersLAG: type: %d, len: %d; Actor: %s, Partner: %s\n      RX: LACP: %d, Marker: %d, MarkerResponse: %d. Unknown: %d, Illegal: %d\n      Tx: LACP: %d, Marker: %d, MarkerResponse: %d\n" % 
+               (self.type, self.len, util.mac_to_string(self.dot3adAggPortActorSystemID), util.mac_to_string(self.dot3adAggPortPartnerOperSystemID),
+                self.dot3adAggPortStatsLACPDUsRx, self.dot3adAggPortStatsMarkerPDUsRx, self.dot3adAggPortStatsMarkerResponsePDUsRx, self.dot3adAggPortStatsUnknownRx, self.dot3adAggPortStatsIllegalRx,
+                self.dot3adAggPortStatsLACPDUsTx, self.dot3adAggPortStatsMarkerPDUsTx, self.dot3adAggPortStatsMarkerResponsePDUsTx))
+
+
+class counter_record_slow_path():
+    '''
+        Counter Slow Path structure
+        not defined sample record in  Flow or Counter samples
+        class is most simple form of a sample record object
+    '''
+    def __init__(self):
+        self.type = COUNTER_DATA_SLOW_PATH
+        self.len = 0
+        self.data = None
+
+    def unpack(self, data):
+        #TODO: implement unpack function
+        self.data = data
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        #TODO: implement pack function
+        return self.data
+  
+    def __repr__(self):
+        return("    CountersSlowPath: type: %d, len: %d\n" % (self.type, self.len))
+
+ 
+class counter_record_ib():
+    '''
+        Counter Infiniband structure
+        not defined sample record in  Flow or Counter samples
+        class is most simple form of a sample record object
+    '''
+    def __init__(self):
+        self.type = COUNTER_DATA_IB
+        self.len = 0
+        self.data = None
+
+    def unpack(self, data):
+        #TODO: implement unpack function
+        self.data = data
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        #TODO: implement pack function
+        return self.data
+  
+    def __repr__(self):
+        return("    CountersIB: type: %d, len: %d\n" % (self.type, self.len))
+
+
+class counter_record_sfp():
+    '''
+        Counter SFP
+        not defined sample record in  Flow or Counter samples
+        class is most simple form of a sample record object
+    '''
+    def __init__(self):
+        self.type = COUNTER_DATA_SFP
+        self.len = 0
+        self.data = None
+
+    def unpack(self, data):
+        #TODO: implement unpack function
+        self.data = data
+
+    def pack(self):
+        '''
+            Pack data object
+            TO BE IMPLEMENTED
+        '''
+        #TODO: implement pack function
+        return self.data
+  
+    def __repr__(self):
+        return("    CountersSFP: type: %d, len: %d\n" % (self.type, self.len))
 
 
 
@@ -890,37 +1260,6 @@ class CounterRecord ():
 
 
 
-
-class IfCounters ():
-    def __init__(self, up):
-        self.index = up.unpack_uint()
-        self.if_type = up.unpack_uint()
-        self.speed = up.unpack_uhyper()
-        self.direction = up.unpack_uint()
-        self.status = up.unpack_uint()
-        self.in_octets = up.unpack_uhyper()
-        self.in_ucasts = up.unpack_uint()
-        self.in_mcasts = up.unpack_uint()
-        self.in_bcasts = up.unpack_uint()
-        self.in_discards = up.unpack_uint()
-        self.in_errors = up.unpack_uint()
-        self.in_unknown_protos = up.unpack_uint()
-        self.out_octets = up.unpack_uhyper()
-        self.out_ucasts = up.unpack_uint()
-        self.out_mcasts = up.unpack_uint()
-        self.out_bcasts = up.unpack_uint()
-        self.out_discards = up.unpack_uint()
-        self.out_errors = up.unpack_uint()
-        self.promiscuous_mode = up.unpack_uint()
-
-    def __repr__(self):
-        return ('<IfCounters| idx: %d, speed: %s, in_octets: %d, out_octets: %d>' %
-                (self.index,
-                 util.speed_to_string(self.speed),
-                 self.in_octets,
-                 self.out_octets))
-
-
 def decode_sflow_data_source(sflow_data_source):
     """Decodes a sflow_data_source as described in the sFlow v5
     spec."""
@@ -979,37 +1318,6 @@ def read_sampled_ipv4(up, sample_datagram):
 
     return None
 
-
-
-def read_if_counters(up):
-
-    # Unpack Generic Interface Counters
-    #     unsigned int ifIndex;
-    #     unsigned int ifType;
-    #     unsigned hyper ifSpeed;
-    #     unsigned int ifDirection;      derived from MAU MIB (RFC 2668)
-    #                                    0 = unkown, 1=full-duplex, 2=half-duplex,
-    #                                    3 = in, 4=out
-    #     unsigned int ifStatus;         bit field with the following bits assigned
-    #                                    bit 0 = ifAdminStatus (0 = down, 1 = up)
-    #                                    bit 1 = ifOperStatus (0 = down, 1 = up)
-    #     unsigned hyper ifInOctets;
-    #     unsigned int ifInUcastPkts;
-    #     unsigned int ifInMulticastPkts;
-    #     unsigned int ifInBroadcastPkts;
-    #     unsigned int ifInDiscards;
-    #     unsigned int ifInErrors;
-    #     unsigned int ifInUnknownProtos;
-    #     unsigned hyper ifOutOctets;
-    #     unsigned int ifOutUcastPkts;
-    #     unsigned int ifOutMulticastPkts;
-    #     unsigned int ifOutBroadcastPkts;
-    #     unsigned int ifOutDiscards;
-    #     unsigned int ifOutErrors;
-    #     unsigned int ifPromiscuousMode;
-    
-    return IfCounters(up)
-    
 
 def read_ethernet_counters(up):
 
@@ -1144,6 +1452,4 @@ def read_vlan_counters(up):
     discards = up.unpack_uint()
 
     return None
-
-
 
