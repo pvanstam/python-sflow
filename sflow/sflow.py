@@ -42,7 +42,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 """
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 __modified__ = "30-03-2017"
 
 import sys
@@ -422,7 +422,6 @@ def get_sample_record_object(sample_type, record_type, data):
         if record_type == COUNTER_DATA_GENERIC:
             record = counter_record_if()
         elif record_type == COUNTER_DATA_ETHERNET:
-            # TODO: import from: read_ethernet_counters(up_flow_data)
             record = counter_record_ethernet()
         elif record_type == COUNTER_DATA_TOKENRING:
             # TODO: import from: read_tokenring_counters(up_flow_data)
@@ -835,28 +834,64 @@ class counter_record_ethernet():
            unsigned int dot3StatsInternalMacReceiveErrors;
            unsigned int dot3StatsSymbolErrors;
         }
-        
-        not implemented yet
     '''
+
     def __init__(self):
         self.type = COUNTER_DATA_ETHERNET
         self.len = 0
-        self.data = None
+        self.dot3StatsAlignmentErrors = 0
+        self.dot3StatsFCSErrors = 0
+        self.dot3StatsSingleCollisionFrames = 0
+        self.dot3StatsMultipleCollisionFrames = 0
+        self.dot3StatsSQETestErrors = 0
+        self.dot3StatsDeferredTransmissions = 0
+        self.dot3StatsLateCollisions = 0
+        self.dot3StatsExcessiveCollisions = 0
+        self.dot3StatsInternalMacTransmitErrors = 0
+        self.dot3StatsCarrierSenseErrors = 0
+        self.dot3StatsFrameTooLongs = 0
+        self.dot3StatsInternalMacReceiveErrors = 0
+        self.dot3StatsSymbolErrors = 0
+
 
     def unpack(self, data):
-        #TODO: implement unpack function
-        self.data = data
+        self.len = len(data)
+        pdata = xdrlib.Unpacker(data)
+        self.dot3StatsAlignmentErrors = pdata.unpack_uint()
+        self.dot3StatsFCSErrors = pdata.unpack_uint()
+        self.dot3StatsSingleCollisionFrames = pdata.unpack_uint()
+        self.dot3StatsMultipleCollisionFrames = pdata.unpack_uint()
+        self.dot3StatsSQETestErrors = pdata.unpack_uint()
+        self.dot3StatsDeferredTransmissions = pdata.unpack_uint()
+        self.dot3StatsLateCollisions = pdata.unpack_uint()
+        self.dot3StatsExcessiveCollisions = pdata.unpack_uint()
+        self.dot3StatsInternalMacTransmitErrors = pdata.unpack_uint()
+        self.dot3StatsCarrierSenseErrors = pdata.unpack_uint()
+        self.dot3StatsFrameTooLongs = pdata.unpack_uint()
+        self.dot3StatsInternalMacReceiveErrors = pdata.unpack_uint()
+        self.dot3StatsSymbolErrors = pdata.unpack_uint()
+
 
     def pack(self):
-        '''
-            Pack data object
-            TO BE IMPLEMENTED
-        '''
-        #TODO: implement pack function
-        return self.data
+        packdata = xdrlib.Packer() # create the packed object
+        packdata.pack_uint(self.dot3StatsAlignmentErrors)
+        packdata.pack_uint(self.dot3StatsFCSErrors)
+        packdata.pack_uint(self.dot3StatsSingleCollisionFrames)
+        packdata.pack_uint(self.dot3StatsMultipleCollisionFrames)
+        packdata.pack_uint(self.dot3StatsSQETestErrors)
+        packdata.pack_uint(self.dot3StatsDeferredTransmissions)
+        packdata.pack_uint(self.dot3StatsLateCollisions)
+        packdata.pack_uint(self.dot3StatsExcessiveCollisions)
+        packdata.pack_uint(self.dot3StatsInternalMacTransmitErrors)
+        packdata.pack_uint(self.dot3StatsCarrierSenseErrors)
+        packdata.pack_uint(self.dot3StatsFrameTooLongs)
+        packdata.pack_uint(self.dot3StatsInternalMacReceiveErrors)
+        packdata.pack_uint(self.dot3StatsSymbolErrors)
+        return packdata.get_buffer()
 
     def __repr__(self):
-        return("    CountersEthernet: type: %d, len: %d\n" % (self.type, self.len))
+        return("    CountersEthernet: type: %d, len: %d, collisions: %d, carrier sense errors: %d\n" %
+               (self.type, self.len, self.dot3StatsSingleCollisionFrames, self.dot3StatsCarrierSenseErrors))
 
 
 class counter_record_tokenring():
@@ -1248,18 +1283,6 @@ class UDPHeader ():
 """
 
 
-class CounterRecord ():
-    def __init__(self, counter_sample, data):
-        self.counter_sample = counter_sample
-        self.data = data
-
-    def __repr__(self):
-        return ('<CounterRecord>\n  %s\n  %s' %
-                (repr(self.counter_sample),
-                 repr(self.data)))
-
-
-
 def decode_sflow_data_source(sflow_data_source):
     """Decodes a sflow_data_source as described in the sFlow v5
     spec."""
@@ -1318,40 +1341,6 @@ def read_sampled_ipv4(up, sample_datagram):
 
     return None
 
-
-def read_ethernet_counters(up):
-
-    # Unpack ethernet_counters structure
-    #      unsigned int dot3StatsAlignmentErrors;
-    #      unsigned int dot3StatsFCSErrors;
-    #      unsigned int dot3StatsSingleCollisionFrames;
-    #      unsigned int dot3StatsMultipleCollisionFrames;
-    #      unsigned int dot3StatsSQETestErrors;
-    #      unsigned int dot3StatsDeferredTransmissions;
-    #      unsigned int dot3StatsLateCollisions;
-    #      unsigned int dot3StatsExcessiveCollisions;
-    #      unsigned int dot3StatsInternalMacTransmitErrors;
-    #      unsigned int dot3StatsCarrierSenseErrors;
-    #      unsigned int dot3StatsFrameTooLongs;
-    #      unsigned int dot3StatsInternalMacReceiveErrors;
-    #      unsigned int dot3StatsSymbolErrors;
-
-    dot3StatsAlignmentErrors = up.unpack_uint()
-    dot3StatsFCSErrors = up.unpack_uint()
-    dot3StatsSingleCollisionFrames = up.unpack_uint()
-    dot3StatsMultipleCollisionFrames = up.unpack_uint()
-    dot3StatsSQETestErrors = up.unpack_uint()
-    dot3StatsDeferredTransmissions = up.unpack_uint()
-    dot3StatsLateCollisions = up.unpack_uint()
-    dot3StatsExcessiveCollisions = up.unpack_uint()
-    dot3StatsInternalMacTransmitErrors = up.unpack_uint()
-    dot3StatsCarrierSenseErrors = up.unpack_uint()
-    dot3StatsFrameTooLongs = up.unpack_uint()
-    dot3StatsInternalMacReceiveErrors = up.unpack_uint()
-    dot3StatsSymbolErrors = up.unpack_uint()
-
-    return None
-    
 
 
 def read_tokenring_counters(up):
