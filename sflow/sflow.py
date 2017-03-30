@@ -338,8 +338,6 @@ class CounterSample():
             unpack elements in data for CounterSample sFlow record
         '''
         pdata = xdrlib.Unpacker(data)
-        print(data)
-        print(len(data))
         if data != None and len(data) > 0:
             self.sequence_number = pdata.unpack_uint()
             self.source_id = pdata.unpack_uint()
