@@ -740,7 +740,7 @@ class counter_record_if():
         not implemented yet
     '''
 
-    def __init__(self, up):
+    def __init__(self):
         self.type = COUNTER_DATA_GENERIC
         self.len = 0
         self.data = None
