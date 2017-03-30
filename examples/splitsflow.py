@@ -316,7 +316,7 @@ def split_records(flow_datagram):
         datagram.sample_records[].flow_records[].sampled_packet.payload
     """
     #retstr = "Start splitting:\n"
-    retstr = ""
+    retstr = "split_records: "
     for sample in flow_datagram.sample_records:
         if sample.sample_type == 1: # FlowSample
             for rec in sample.flow_records:
@@ -334,8 +334,8 @@ def split_records(flow_datagram):
                                 send_datagram(collectid, sflow_dg)
                             else:
                                 retstr += "  unknown collector for IP " + util.ip_to_string(payl.dst)
-#                else:
-#                    retstr += "  " + str(rec.type) + "\n"
+                else:
+                    retstr += "  " + str(rec.type) + "\n"
         else: # CounterSample
             retstr += "  CounterSample\n"
             logger.debug("split_records: " + repr(sample))
@@ -388,8 +388,8 @@ def mainroutine():
             #sys.stdout.write(repr(flow_data))
             
             retval = split_records(flow_data)
-    #        if len(retval) > 1:
-    #            sys.stdout.write(retval)
+            if len(retval) > 1:
+                logger.debug("mainroutine: " + retval)
     except KeyboardInterrupt:
         # stop threads if any
         logger.info("Keyboard interrupt or SIGINT received. Stopping program")
