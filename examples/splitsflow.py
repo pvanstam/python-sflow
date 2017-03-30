@@ -338,7 +338,7 @@ def split_records(flow_datagram):
 #                    retstr += "  " + str(rec.type) + "\n"
         else: # CounterSample
             retstr += "  CounterSample\n"
-            logger.debug(repr(sample))
+            logger.debug("split_records: " + repr(sample))
     return retstr
 
 
