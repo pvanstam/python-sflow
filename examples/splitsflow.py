@@ -388,8 +388,8 @@ def mainroutine():
             #sys.stdout.write(repr(flow_data))
             
             retval = split_records(flow_data)
-            if len(retval) > 1:
-                logger.debug("mainroutine: " + retval)
+#            if len(retval) > 1:
+#                logger.debug("mainroutine: " + retval)
     except KeyboardInterrupt:
         # stop threads if any
         logger.info("Keyboard interrupt or SIGINT received. Stopping program")
