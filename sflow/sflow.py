@@ -42,8 +42,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 """
-__version__ = "0.2.3"
-__modified__ = "30-03-2017"
+__version__ = "0.2.4"
+__modified__ = "31-01-2019"
 
 import sys
 import xdrlib
@@ -194,6 +194,7 @@ class Datagram(object):
                     data = up.unpack_bytes()
                     if data != None:
                         sample.len = len(data)
+#TODO: check / try for len > 0; unpack fails from time to time
                         sample.unpack(data)
                         self.sample_records.append(sample)
             
@@ -245,6 +246,8 @@ def get_sample_object(sample_type):
         return FlowSample()
     elif sample_type == SAMPLE_DATA_COUNTER_RECORD:
         return CounterSample()
+    elif sample_type == SAMPLE_DATA_FLOW_EXPANDED_RECORD:
+        return ExpandedFlowSample()
     else:
         return None
 
@@ -330,6 +333,93 @@ class FlowSample ():
             repr_ += repr(rec)
 
         return repr_
+
+
+
+class ExpandedFlowSample():
+    """
+        sFlow sample type Expanded Flow Sample
+    """
+
+    def __init__(self):
+        self.sample_type = SAMPLE_DATA_FLOW_EXPANDED_RECORD
+        self.len = 0
+        self.sequence_number = 0
+        self.source_id_type = 0 # specific for expanded type
+        self.source_id = 0
+        self.sampling_rate = 0
+        self.sample_pool = 0
+        self.drops = 0
+        self.input_if_format = 0 # specific for expanded type
+        self.input_if = 0
+        self.output_if_format = 0 # specific for expanded type
+        self.output_if = 0
+        self.num_flow_records = 0
+        self.flow_records = []
+
+
+    def unpack(self, data):
+        pdata = xdrlib.Unpacker(data)
+        self.sequence_number = pdata.unpack_uint()
+        self.source_id_type = pdata.unpack_uint()
+        self.source_id = pdata.unpack_uint()
+        self.sampling_rate = pdata.unpack_uint()
+        self.sample_pool = pdata.unpack_uint()
+        self.drops = pdata.unpack_uint()
+        self.input_if_format = pdata.unpack_uint()
+        self.input_if = pdata.unpack_uint()
+        self.output_if_format = pdata.unpack_uint()
+        self.output_if = pdata.unpack_uint()
+        self.num_flow_records = pdata.unpack_uint()
+
+        for i in range(self.num_flow_records):
+            flow_record = get_sample_record_object(SAMPLE_DATA_FLOW_RECORD, 
+                                                  pdata.unpack_uint(),
+                                                  pdata.unpack_bytes())            
+            self.flow_records.append(flow_record)
+
+
+    def pack(self):
+        '''
+            Pack data object
+        '''
+        packdata = xdrlib.Packer() # create the packed object
+#        packdata.pack_uint(self.sample_type)
+#        packdata.pack_uint(self.len)
+        packdata.pack_uint(self.sequence_number)
+
+        packdata.pack_uint(self.source_id_type)
+        packdata.pack_uint(self.source_id)
+        packdata.pack_uint(self.sampling_rate)
+        packdata.pack_uint(self.sample_pool)
+        packdata.pack_uint(self.drops)
+        packdata.pack_uint(self.input_if_format)
+        packdata.pack_uint(self.input_if)
+        packdata.pack_uint(self.output_if_format)
+        packdata.pack_uint(self.output_if)
+        packdata.pack_uint(self.num_flow_records)
+
+        for i in range(self.num_flow_records):
+            rec = self.flow_records[i]
+            packdata.pack_uint(rec.type)
+            packdata.pack_bytes(rec.pack())
+
+        return packdata.get_buffer()
+
+        
+    def __repr__(self):
+        repr_ = ('  FlowSample: len: %d, seq: %d, in_if: %d, out_if: %d, rate: %d>, records: %d\n' %
+                (self.len,
+                 self.sequence_number,
+                 self.input_if,
+                 self.output_if,
+                 self.sampling_rate,
+                 self.num_flow_records))
+        for rec in self.flow_records:
+            repr_ += repr(rec)
+
+        return repr_
+
 
 
 class CounterSample():
