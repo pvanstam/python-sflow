@@ -8,7 +8,7 @@
     
     The MIT License (MIT)
 
-    Copyright (c) 2016 Pim van Stam <pim@svsnet.nl>
+    Copyright (c) 2016-2019 - Pim van Stam <pim@svsnet.nl>
     
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +42,8 @@ import threading
 import queue
 import struct
 import copy
-
+import nawasmq
+#TODO: nawasmq should be moved to mgbgp
 try:
     import sflow
     import util
@@ -195,6 +196,24 @@ def read_prefixlist(fn):
             prefix_list.append((netaddr, netmask, id_))
                     
     fp.close()
+
+
+def write_prefixlist(fn):
+    """
+        Write the prefixlist to fn from the memory object list
+        the prefixlist is: IP network, netmask, ID (i.e. AS-number)
+        Output is the stored prefix list in format:
+        prefix/netmask    ASnumber    next-hop
+        
+        Next-hop is not known, written as 1.2.3.4
+    """
+    global prefix_list
+
+    fp = open(fn, "w")
+    for netaddr, netmask, asn in prefix_list:
+        fp.write(netaddr + "/" + netmask + "\t" + asn + "\t1.2.3.4")                    
+    fp.close()
+
 
 
 def read_collectorlist(fn):
@@ -351,6 +370,20 @@ def sighup_handler(signum, frame):
     read_collectorlist(cfg['collectorlist'])
 
 
+def callback_prefix_updates(message:nawasmq.PrefixMessage):
+    '''
+        Callback routine for the AMQP messages
+        Receive messages and print on screen.
+    '''
+    global cnt
+    
+    msg = message.get_message()
+    cnt += 1
+    print(msg['type'] + " " + msg['prefix'] + " by " + msg['asn'] + " (" + str(cnt) + ")")
+#TODO update the prefix_list
+
+
+
 def mainroutine():
     '''
         main routine of the daemon process
@@ -370,7 +403,14 @@ def mainroutine():
     sock.bind(listen_addr)
 #TODO: test creation of socket
 
+    # start listener for BGP updates on members prefixes
+    # use these updates to update the AS-prefix list
+    lstnr = nawasmq.Listener("config.yml")
+    lstnr.listen(nawasmq.PrefixMessage, callback_prefix_updates)
+
     logger.info("Splitsflow application has started")
+    
+    
     try:
         while True:
             # compare prefix list

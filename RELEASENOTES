@@ -1,5 +1,9 @@
 Release notes for python-sflow library and splitsflow application
 
+
+01-02-2019
+* splitsflow - v0.4.2: in split_records() also support for SAMPLE_DATA_FLOW_EXPANDED_RECORD
+
 31-01-2019
 * sflow.py - v 0.2.4: added implementation of ExpandedFlowSample()
 
