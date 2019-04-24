@@ -414,8 +414,7 @@ def mainroutine():
         # stop threads if any
         logger.info("Keyboard interrupt or SIGINT received. Stopping program")
         return
-        
-    # exit main routine and program
+        # exit main routine and program
 
     
 if __name__ == '__main__':
