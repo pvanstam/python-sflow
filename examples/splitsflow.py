@@ -42,8 +42,7 @@ import threading
 import queue
 import struct
 import copy
-import nawasmq
-#TODO: nawasmq should be moved to mgbgp
+
 try:
     import sflow
     import util
@@ -370,20 +369,6 @@ def sighup_handler(signum, frame):
     read_collectorlist(cfg['collectorlist'])
 
 
-def callback_prefix_updates(message:nawasmq.PrefixMessage):
-    '''
-        Callback routine for the AMQP messages
-        Receive messages and print on screen.
-    '''
-    global cnt
-    
-    msg = message.get_message()
-    cnt += 1
-    print(msg['type'] + " " + msg['prefix'] + " by " + msg['asn'] + " (" + str(cnt) + ")")
-#TODO update the prefix_list
-
-
-
 def mainroutine():
     '''
         main routine of the daemon process
@@ -402,11 +387,6 @@ def mainroutine():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(listen_addr)
 #TODO: test creation of socket
-
-    # start listener for BGP updates on members prefixes
-    # use these updates to update the AS-prefix list
-    lstnr = nawasmq.Listener("config.yml")
-    lstnr.listen(nawasmq.PrefixMessage, callback_prefix_updates)
 
     logger.info("Splitsflow application has started")
     
