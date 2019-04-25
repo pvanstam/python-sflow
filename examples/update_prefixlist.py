@@ -7,7 +7,7 @@
 
     The MIT License (MIT)
 
-    Copyright (c) 2016-2019 - Pim van Stam <pim@svsnet.nl>
+    Copyright (c) 2019 - Pim van Stam <pim@svsnet.nl>
     
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -28,10 +28,45 @@
     SOFTWARE.
 
 '''
-
+__version__="0.1"
+import os
+import configparser
+import argparse
+import daemon
 import nawasmq
 
-def write_prefixlist(fn):
+d_prefix = {} # consists of d_prefix[prefix]=asn)
+
+# =============================================================================
+# Configuration items
+# =============================================================================
+
+config = {'configfile'    : '/etc/splitsflow.conf',
+          'loglevel'      : 'info',
+          'prefixlist'    : 'bgp_prefixes.txt',
+          'logfile'       : '/var/log/update_prefix.log',
+          'outfile'       : '/var/log/update_prefix.err',
+         }
+
+# =============================================================================
+# End of configuration
+# =============================================================================
+
+def read_config(confg, cfgfile, context):
+    '''
+        read config file
+    '''
+    if os.path.isfile(cfgfile):
+        configs = configparser.RawConfigParser()
+        configs.read(cfgfile)
+
+        for option in configs.options(context):
+            confg[option]=configs.get(context,option)
+
+    return confg
+
+
+def write_prefixlist():
     """
         Write the prefixlist to fn from the memory object list
         the prefixlist is: IP network, netmask, ID (i.e. AS-number)
@@ -40,14 +75,54 @@ def write_prefixlist(fn):
         
         Next-hop is not known, written as 1.2.3.4
     """
-    global prefix_list
 
-    fp = open(fn, "w")
-    for netaddr, netmask, asn in prefix_list:
-        fp.write(netaddr + "/" + netmask + "\t" + asn + "\t1.2.3.4")                    
+    try:
+        fp = open(config['prefixlist'], "w")
+    except:
+        print("cannot create prefixlist file")
+        return
+    
+    for key in sorted(d_prefix.keys()):
+        fp.write(key + "\t" + d_prefix[key] + "\t1.2.3.4")                    
     fp.close()
 
 
+def callback_prefix_updates(message:nawasmq.PrefixMessage):
+    '''
+        Callback routine for the AMQP messages
+        Receive messages and print on screen.
+    '''
+    msg = message.get_message()
+    print(msg['type'] + " " + msg['prefix'] + " by " + msg['asn'])
+    d_prefix[msg['prefix']] = msg['asn']
+    print(d_prefix)
+    write_prefixlist()
 
-if __name__ == '__main__':
-    pass
+
+def mainroutine():
+    lstnr = nawasmq.Listener("config.yml")
+    lstnr.listen(nawasmq.PrefixMessage, callback_prefix_updates)
+
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description="Update prefixlist from message bus prefix advertisements or withdraws")
+    parser.add_argument("-c", "--configfile", help="Configuration file")
+    parser.add_argument("-d", "--nodaemon", default=False,
+                        action='store_true', help="Do not enter daemon mode")
+
+    options = parser.parse_args()
+    if options.configfile != None:
+        config['configfile'] = options.configfile
+
+    cfg = read_config(config, config['configfile'], 'common')
+
+    fileout = open(cfg['outfile'], "w")
+    if not options.nodaemon:
+        with daemon.DaemonContext(stderr=fileout, stdout=fileout):
+            mainroutine()
+        fileout.close()
+    else:
+        mainroutine()
+
+

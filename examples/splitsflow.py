@@ -28,8 +28,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.4.3"
-__modified__ = "30-03-2017"
+__version__ = "0.4.4"
+__modified__ = "25-04-2019"
 
 import os
 import sys
@@ -404,10 +404,7 @@ if __name__ == '__main__':
     parser.add_argument("-c", "--configfile", help="Configuration file")
     parser.add_argument("-d", "--nodaemon", default=False,
                         action='store_true', help="Do not enter daemon mode")
-    parser.add_argument("-v", "--verbose", default=False,
-                        help="Show action of playlist player")
 
-#    (options, args) = parser.parse_args()
     options = parser.parse_args()
     if options.configfile != None:
         config['configfile'] = options.configfile

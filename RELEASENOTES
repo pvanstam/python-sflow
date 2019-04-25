@@ -1,5 +1,11 @@
 Release notes for python-sflow library and splitsflow application
 
+25-04-2019
+* splitsflow - v0.4.4: removed unused verbose parser argument
+* update_prefixlist - v0.1: added module to write prefixlist file from BGP advertisements/withdraws
+
+24-04-2019
+* splitsflow - v0.4.3: removed write_prefixlist() function - will be seperated
 
 01-02-2019
 * splitsflow - v0.4.2: in split_records() also support for SAMPLE_DATA_FLOW_EXPANDED_RECORD
