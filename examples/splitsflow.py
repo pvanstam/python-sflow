@@ -366,6 +366,8 @@ def mainroutine():
     global logger
     prevlen=0
 
+    write_pid()
+
     # Register sighup_handler to be called on SIGHUP
     signal.signal(signal.SIGHUP, sighup_handler)
 
@@ -419,7 +421,6 @@ if __name__ == '__main__':
 
     cfg = read_config(config, config['configfile'], 'common')
 
-    write_pid()
     fileout = open(cfg['outfile'], "w")
     if not options.nodaemon:
         with daemon.DaemonContext(stderr=fileout, stdout=fileout):
