@@ -66,6 +66,25 @@ def read_config(confg, cfgfile, context):
     return confg
 
 
+def read_prefixlist():
+    """
+        Read the prefixlist and stotr in the memory object list
+    """
+    global d_prefix
+    
+    try:
+        with open(config['prefixlist'], "r") as fp:
+            prefixdata = fp.readlines()
+    except:
+        print("cannot read the prefixlist file")
+        return
+    
+    for line in prefixdata:
+        items = line[:-1].split()
+        if len(items) == 3:
+            d_prefix[items[0]] = items[1]
+
+
 def write_prefixlist():
     """
         Write the prefixlist to fn from the memory object list
@@ -100,6 +119,7 @@ def callback_prefix_updates(message:nawasmq.PrefixMessage):
 
 
 def mainroutine():
+    read_prefixlist()
     lstnr = nawasmq.Listener("config.yml")
     lstnr.listen(nawasmq.PrefixMessage, callback_prefix_updates)
 
