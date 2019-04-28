@@ -102,8 +102,10 @@ def write_prefixlist():
         return
     
     for key in sorted(d_prefix.keys()):
-        fp.write(key + "\t" + d_prefix[key] + "\t1.2.3.4")                    
+        fp.write(key + "\t" + d_prefix[key] + "\t1.2.3.4\n")                    
     fp.close()
+  
+# TODO: signal splitsflow process  
 
 
 def callback_prefix_updates(message:nawasmq.PrefixMessage):
@@ -113,8 +115,17 @@ def callback_prefix_updates(message:nawasmq.PrefixMessage):
     '''
     msg = message.get_message()
     print(msg['type'] + " " + msg['prefix'] + " by " + msg['asn'])
-    d_prefix[msg['prefix']] = msg['asn']
-    print(d_prefix)
+    try:
+        if msg['type'] == 'announce':
+            d_prefix[msg['prefix']] = msg['asn']
+        elif msg['type'] == 'witdraw':
+            del d_prefix[msg['prefix']]
+        else:
+            print("unknown message type: " + msg['type'])
+    except:
+        print("exception occurred")
+
+#TODO: put write into a new thread
     write_prefixlist()
 
 
