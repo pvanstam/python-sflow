@@ -1,5 +1,9 @@
 Release notes for python-sflow library and splitsflow application
 
+29-04-2019
+* splitsflow - v.0.4.5: added writing pid file
+* update_prefixlist - v0.2: implemented reading and writing prefix list; signal splitsflow
+
 25-04-2019
 * splitsflow - v0.4.4: removed unused verbose parser argument
 * update_prefixlist - v0.1: added module to write prefixlist file from BGP advertisements/withdraws

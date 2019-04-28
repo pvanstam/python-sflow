@@ -28,8 +28,9 @@
     SOFTWARE.
 
 '''
-__version__="0.1"
+__version__="0.2"
 import os
+import signal
 import configparser
 import argparse
 import daemon
@@ -46,11 +47,20 @@ config = {'configfile'    : '/etc/splitsflow.conf',
           'prefixlist'    : 'bgp_prefixes.txt',
           'logfile'       : '/var/log/update_prefix.log',
           'outfile'       : '/var/log/update_prefix.err',
+          'pid_splitsflow': '/var/run/splitsflow.pid'
          }
 
 # =============================================================================
 # End of configuration
 # =============================================================================
+
+def write_pid():
+    pid = os.getpid()
+    with open("/var/run/update_prefixlist.pid", "w") as fpid:
+        fpid.write("%d\n" % pid)
+    return pid
+
+
 
 def read_config(confg, cfgfile, context):
     '''
@@ -105,7 +115,10 @@ def write_prefixlist():
         fp.write(key + "\t" + d_prefix[key] + "\t1.2.3.4\n")                    
     fp.close()
   
-# TODO: signal splitsflow process  
+# TODO: signal splitsflow process
+    with open(config['pid_splitsflow']) as fp:
+        pid = fp.read()
+    os.kill(pid, signal.SIGHUP)
 
 
 def callback_prefix_updates(message:nawasmq.PrefixMessage):
@@ -132,6 +145,7 @@ def callback_prefix_updates(message:nawasmq.PrefixMessage):
 
 def mainroutine():
     read_prefixlist()
+    print("Starting listener for BGP prefix updates")
     lstnr = nawasmq.Listener("config.yml")
     lstnr.listen(nawasmq.PrefixMessage, callback_prefix_updates)
 

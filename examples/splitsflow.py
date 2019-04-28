@@ -28,8 +28,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.4.4"
-__modified__ = "25-04-2019"
+__version__ = "0.4.5"
+__modified__ = "29-04-2019"
 
 import os
 import sys
@@ -61,7 +61,8 @@ config = {'configfile'    : '/etc/splitsflow.conf',
           'collectorlist' : 'collectorlist.txt',
           'logfile'       : '/var/log/splitsflow.log',
           'outfile'       : '/var/log/splitsflowerr.log',
-          'port'          : '5700'
+          'port'          : '5700',
+          'pid_splitsflow': '/var/run/splitsflow.pid'
          }
 
 # =============================================================================
@@ -351,6 +352,13 @@ def sighup_handler(signum, frame):
     read_collectorlist(cfg['collectorlist'])
 
 
+def write_pid():
+    pid = os.getpid()
+    with open(config['pid_splitsflow'], "w") as fpid:
+        fpid.write("%d\n" % pid)
+    return pid
+
+
 def mainroutine():
     '''
         main routine of the daemon process
@@ -411,6 +419,7 @@ if __name__ == '__main__':
 
     cfg = read_config(config, config['configfile'], 'common')
 
+    write_pid()
     fileout = open(cfg['outfile'], "w")
     if not options.nodaemon:
         with daemon.DaemonContext(stderr=fileout, stdout=fileout):
