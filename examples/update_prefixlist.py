@@ -43,6 +43,7 @@ d_prefix = {} # consists of d_prefix[prefix]=asn)
 # =============================================================================
 
 config = {'configfile'    : '/etc/splitsflow.conf',
+          'mq_config'     : 'config.yml',
           'loglevel'      : 'info',
           'prefixlist'    : 'bgp_prefixes.txt',
           'logfile'       : '/var/log/update_prefix.log',
@@ -146,7 +147,7 @@ def callback_prefix_updates(message:nawasmq.PrefixMessage):
 def mainroutine():
     read_prefixlist()
     print("Starting listener for BGP prefix updates")
-    lstnr = nawasmq.Listener("config.yml")
+    lstnr = nawasmq.Listener(config['mq_config'])
     lstnr.listen(nawasmq.PrefixMessage, callback_prefix_updates)
 
 
