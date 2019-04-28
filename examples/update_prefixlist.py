@@ -118,10 +118,11 @@ def callback_prefix_updates(message:nawasmq.PrefixMessage):
     try:
         if msg['type'] == 'announce':
             d_prefix[msg['prefix']] = msg['asn']
-        elif msg['type'] == 'witdraw':
+        elif msg['type'] == 'withdraw':
             del d_prefix[msg['prefix']]
         else:
             print("unknown message type: " + msg['type'])
+            return
     except:
         print("exception occurred")
 
