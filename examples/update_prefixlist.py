@@ -118,7 +118,7 @@ def write_prefixlist():
 # TODO: signal splitsflow process
     with open(config['pid_splitsflow']) as fp:
         pid = fp.read()
-    os.kill(pid, signal.SIGHUP)
+    os.kill(int(pid), signal.SIGHUP)
 
 
 def callback_prefix_updates(message:nawasmq.PrefixMessage):
