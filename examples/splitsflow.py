@@ -28,7 +28,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.4.6a"
+__version__ = "0.4.6b"
 __modified__ = "10-05-2019"
 
 import os
@@ -328,6 +328,7 @@ def split_records(flow_datagram):
                         payl = pkt.payload
                         if payl != None:
                             # check dst ip address against collectors list
+                            logger.debug("split_records: found sample with dst ip " + payl.dst)
                             collectid = get_prefixid(payl.dst)
                             if collectid != None:
                                 seqnr = get_nextseqnr(collectid)
