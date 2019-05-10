@@ -337,6 +337,8 @@ def split_records(flow_datagram):
                                 send_datagram(collectid, sflow_dg)
                             else:
                                 retstr += "  unknown collector for IP " + util.ip_to_string(payl.dst)
+                        else:
+                            logger.debug("split_records: sample without payload")
                 else:
                     retstr += "  " + str(rec.type) + "\n"
         else: # CounterSample
