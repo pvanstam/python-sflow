@@ -319,8 +319,10 @@ def split_records(flow_datagram):
     """
     #retstr = "Start splitting:\n"
     retstr = "split_records: "
+    logger.debug("datagram has " + str(len(flow_datagram.sample_records)) + "records")
     for sample in flow_datagram.sample_records:
         if sample.sample_type == 1: # FlowSample
+            logger.debug("flowsample has " + str(len(sample.flow_records)) + "sample records")
             for rec in sample.flow_records:
                 if rec.type == sflow.FLOW_DATA_RAW_HEADER:
                     pkt = rec.sampled_packet
@@ -406,8 +408,8 @@ def mainroutine():
             #sys.stdout.write(repr(flow_data))
             
             retval = split_records(flow_data)
-            if len(retval) > 1:
-                logger.debug("mainroutine: " + retval)
+#            if len(retval) > 1:
+#                logger.debug("mainroutine: " + retval)
     except KeyboardInterrupt:
         # stop threads if any
         logger.info("Keyboard interrupt or SIGINT received. Stopping program")
