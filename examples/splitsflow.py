@@ -28,7 +28,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.4.6c"
+__version__ = "0.4.7"
 __modified__ = "10-05-2019"
 
 import os
@@ -317,12 +317,13 @@ def split_records(flow_datagram):
         Structure in case of sampled IP payload
         datagram.sample_records[].flow_records[].sampled_packet.payload
     """
-    #retstr = "Start splitting:\n"
-    retstr = "split_records: "
-    logger.debug("datagram has " + str(len(flow_datagram.sample_records)) + "records")
+
+    logger.debug("datagram has " + str(len(flow_datagram.sample_records)) + " records")
     for sample in flow_datagram.sample_records:
-        if sample.sample_type == 1: # FlowSample
-            logger.debug("flowsample has " + str(len(sample.flow_records)) + "sample records")
+        logger.debug("split_records: " + repr(sample))
+        if ((sample.sample_type == sflow.SAMPLE_DATA_FLOW_RECORD) or 
+            (sample.sample_type == sflow.SAMPLE_DATA_FLOW_EXPANDED_RECORD)):
+            logger.debug("flowsample has " + str(len(sample.flow_records)) + " sample records")
             for rec in sample.flow_records:
                 if rec.type == sflow.FLOW_DATA_RAW_HEADER:
                     pkt = rec.sampled_packet
@@ -334,21 +335,17 @@ def split_records(flow_datagram):
                             collectid = get_prefixid(payl.dst)
                             if collectid != None:
                                 seqnr = get_nextseqnr(collectid)
-                                retstr += "  %s (%d), seqnr=%d\n" % (util.ip_to_string(payl.dst), collectid, seqnr)
                                 sflow_dg = pack_flow(flow_datagram, sample, rec, seqnr)
                                 send_datagram(collectid, sflow_dg)
                             else:
-                                retstr += "  unknown collector for IP " + util.ip_to_string(payl.dst)
+                                logger.debug("split_records: unknown collector for IP " + util.ip_to_string(payl.dst))
                         else:
                             logger.debug("split_records: sample without payload")
                     else:
                         logger.debug("split_records: record without sample packet")
                 else:
-                    retstr += "  " + str(rec.type) + "\n"
-        else: # CounterSample
-            retstr += "  CounterSample\n"
-            logger.debug("split_records: " + repr(sample))
-    return retstr
+                    logger.debug("split_records: sample record not raw type (%d)" % rec.type)
+
 
 
 def sighup_handler(signum, frame):
@@ -407,9 +404,8 @@ def mainroutine():
             #sys.stdout.write(show_ipv4_addr(flow_data))
             #sys.stdout.write(repr(flow_data))
             
-            retval = split_records(flow_data)
-#            if len(retval) > 1:
-#                logger.debug("mainroutine: " + retval)
+            split_records(flow_data)
+
     except KeyboardInterrupt:
         # stop threads if any
         logger.info("Keyboard interrupt or SIGINT received. Stopping program")
