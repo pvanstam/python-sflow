@@ -251,7 +251,7 @@ def get_prefixid(ipaddr):
     """
     global prefix_list
     
-    id_ = 1
+    id_ = 0
     #ipaddr = socket.ntohl(ipaddr)
     #ip = struct.unpack('!L',socket.inet_aton(ipaddr))[0]
     for netaddr, netmask, prefid in prefix_list:
@@ -302,7 +302,7 @@ def send_datagram(collector_id, datagram):
     try:
         collector_list[collector_id].senddata(datagram)
     except KeyError:
-        """ Do nothing, no collector defined for this datagram """
+        logger.debug("send_datagram: no collector in list for ID " + str(collector_id))
     except:
         exctype, excvalue = sys.exc_info()[:2]
         logger.error("send_datagram: Unknown exception: %s - %s" % (exctype, excvalue))
@@ -334,7 +334,7 @@ def split_records(flow_datagram):
                             logger.debug("split_records: found sample with dst IP " + util.ip_to_string(payl.dst))
                             collectid = get_prefixid(payl.dst)
                             logger.debug("split_records: collector id is: %d" % collectid)
-                            if collectid != None:
+                            if collectid != 0:
                                 seqnr = get_nextseqnr(collectid)
                                 sflow_dg = pack_flow(flow_datagram, sample, rec, seqnr)
                                 send_datagram(collectid, sflow_dg)
@@ -400,11 +400,7 @@ def mainroutine():
             data, addr = sock.recvfrom(65535)
             flow_data = sflow.Datagram()
             flow_data.unpack(addr, data)
-    
-            #ip = show_ipv4_addr(flow_data)
-            #sys.stdout.write(show_ipv4_addr(flow_data))
-            #sys.stdout.write(repr(flow_data))
-            
+                
             split_records(flow_data)
 
     except KeyboardInterrupt:
