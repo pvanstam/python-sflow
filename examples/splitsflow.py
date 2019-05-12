@@ -426,7 +426,7 @@ if __name__ == '__main__':
 
     cfg = read_config(config, config['configfile'], 'common')
 
-    fileout = open(cfg['outfile'], "w")
+    fileout = open(cfg['outfile'], "a")
     if not options.nodaemon:
         with daemon.DaemonContext(stderr=fileout, stdout=fileout):
             mainroutine()
