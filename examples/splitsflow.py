@@ -331,8 +331,9 @@ def split_records(flow_datagram):
                         payl = pkt.payload
                         if payl != None:
                             # check dst ip address against collectors list
-                            logger.debug("split_records: found sample with dst MAC " + util.ip_to_string(payl.dst))
+                            logger.debug("split_records: found sample with dst IP " + util.ip_to_string(payl.dst))
                             collectid = get_prefixid(payl.dst)
+                            logger.debug("split_records: collector id is: %d" % collectid)
                             if collectid != None:
                                 seqnr = get_nextseqnr(collectid)
                                 sflow_dg = pack_flow(flow_datagram, sample, rec, seqnr)
