@@ -62,7 +62,8 @@ config = {'configfile'    : '/etc/splitsflow.conf',
           'logfile'       : '/var/log/splitsflow.log',
           'outfile'       : '/var/log/splitsflowerr.log',
           'port'          : '5700',
-          'pid_splitsflow': '/var/run/splitsflow.pid'
+          'pid_splitsflow': '/var/run/splitsflow.pid',
+          'my_asn'        : '200020'
          }
 
 # =============================================================================
@@ -189,6 +190,8 @@ def read_prefixlist(fn):
         elem = line.split("\t")
         if len(elem) >= 2:
             id_ = int(elem[1])
+            if id_ == 'I':
+                id_ = config['my_asn']
             network, mask = elem[0].split('/')
             #print("%15s / %s -> %6d" % (network, mask, id_))
             netaddr = struct.unpack('!L',socket.inet_aton(network))[0]
