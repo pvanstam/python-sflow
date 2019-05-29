@@ -28,8 +28,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.4.8"
-__modified__ = "10-05-2019"
+__version__ = "0.4.8a"
+__modified__ = "29-05-2019"
 
 import os
 import sys
@@ -189,9 +189,10 @@ def read_prefixlist(fn):
     for line in fp:
         elem = line.split("\t")
         if len(elem) >= 2:
-            id_ = int(elem[1])
-            if id_ == 'I':
-                id_ = config['my_asn']
+            if elem[1] == 'I':
+                id_ = int(config['my_asn'])
+            else:
+                id_ = int(elem[1])
             network, mask = elem[0].split('/')
             #print("%15s / %s -> %6d" % (network, mask, id_))
             netaddr = struct.unpack('!L',socket.inet_aton(network))[0]
