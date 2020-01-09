@@ -11,8 +11,10 @@
     Modifications:
     0.1.1 - 17-09-2018: in channel.exchange_declare use exchange_type, 'type' is deprecated
     0.1.2 - 18-09-2018: removed some logging
+    0.1.3 - 09-01-2020: in class Queue define echanges as durable in channel.exchange_declare()
+                        parameter 'durable' in config.yml supported
 '''
-__VERSION__="0.1.2"
+__VERSION__="0.1.3"
 
 import sys
 import pika
@@ -202,7 +204,11 @@ class Queue:
 
         self.channel = self.connection.channel()
 
-        self.channel.exchange_declare(exchange=self.exchange, exchange_type='topic')
+        durable = cfg['rabbitmq'].get('durable', True)
+        self.logger.info("Durable = " + str(durable))
+        self.channel.exchange_declare(exchange=self.exchange,
+                                      exchange_type='topic',
+                                      durable=durable)
     
 
     def disconnect(self):
