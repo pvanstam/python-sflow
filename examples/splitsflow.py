@@ -28,7 +28,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.4.8a"
+__version__ = "0.4.9"
 __modified__ = "29-05-2019"
 
 import os
@@ -198,7 +198,7 @@ def read_prefixlist(fn):
             netaddr = struct.unpack('!L',socket.inet_aton(network))[0]
             netmask = ((1<<(32-int(int(mask)))) - 1)^0xffffffff
             prefix_list.append((netaddr, netmask, id_))
-            logger.debug("read_prefixlist: added prefix %s/%s with id %s to list" % (network, mask, str(id_)))
+            logger.info("read_prefixlist: added prefix %s/%s with id %s to list" % (network, mask, str(id_)))
                     
     fp.close()
 

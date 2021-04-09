@@ -1,6 +1,6 @@
 '''
     update_prefixlist - update the prefixlist file with updates from message bus
-    using nawasmq to get BGP updates (advertisements/withdraws)
+    using mqbgp to get BGP updates (advertisements/withdraws)
     
     @author: Pim van Stam <pim@svsnet.nl>
     Created on 25 Apr 2019
@@ -28,13 +28,13 @@
     SOFTWARE.
 
 '''
-__version__="0.2"
+__version__="0.3"
 import os
 import signal
 import configparser
 import argparse
 import daemon
-import nawasmq
+import mqbgp
 
 d_prefix = {} # consists of d_prefix[prefix]=asn)
 
@@ -116,13 +116,12 @@ def write_prefixlist():
         fp.write(key + "\t" + d_prefix[key] + "\t1.2.3.4\n")                    
     fp.close()
   
-# TODO: signal splitsflow process
     with open(config['pid_splitsflow']) as fp:
         pid = fp.read()
     os.kill(int(pid), signal.SIGHUP)
 
 
-def callback_prefix_updates(message:nawasmq.PrefixMessage):
+def callback_prefix_updates(message:mqbgp.PrefixMessage):
     '''
         Callback routine for the AMQP messages
         Receive messages and print on screen.
@@ -146,9 +145,12 @@ def callback_prefix_updates(message:nawasmq.PrefixMessage):
 
 def mainroutine():
     read_prefixlist()
+    
+#TODO: implement logging to logfile
+    
     print("Starting listener for BGP prefix updates")
-    lstnr = nawasmq.Listener(config['mq_config'])
-    lstnr.listen(nawasmq.PrefixMessage, callback_prefix_updates)
+    lstnr = mqbgp.Listener(config['mq_config'])
+    lstnr.listen(mqbgp.PrefixMessage, callback_prefix_updates)
 
 
 if __name__ == "__main__":
