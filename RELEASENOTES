@@ -1,5 +1,12 @@
 Release notes for python-sflow library and splitsflow application
 
+26-04-2021
+* splitsflow - v0.4.10: cleanup unused, commented code; Collector _init log on INFO level in stead of DEBUG
+
+06-04-2021
+* splitsflow - v.0.4.9: read_prefixlist log at level info in stead of debug. Use logrotate to keep logfile managable
+
+
 29-04-2019
 * splitsflow - v.0.4.5: added writing pid file
 * update_prefixlist - v0.2: implemented reading and writing prefix list; signal splitsflow

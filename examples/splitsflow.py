@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 '''
     splitsflow - split sFlow Sample records based on destination IP prefix
     sent splitted records to the destination collector specified per ASN
@@ -28,8 +29,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.4.9"
-__modified__ = "29-05-2019"
+__version__ = "0.4.10"
+__modified__ = "26-04-2021"
 
 import os
 import sys
@@ -112,7 +113,7 @@ class FlowThread(threading.Thread):
         self.port   = int(port)
         self.count  = 0
         threading.Thread.__init__(self)
-        logger.debug("FlowThread: Thread %s started, destination host %s, port %s" % 
+        logger.info("FlowThread: Thread %s started, destination host %s, port %s" % 
                      (self.target, self.host, self.port))
 
 
@@ -127,13 +128,7 @@ class FlowThread(threading.Thread):
             sys.exit(1)
 
         while True:
-            # now let's change the header:
-            # modify count and flow_sequence so it makes sense for the receiver
             data = self.queue.get()
-            #hdata = struct.unpack("!HHIIIIBBH", header)
-            #hdr = struct.pack("!HHIIIIBBH", hdata[0], len(data), hdata[2], hdata[3], hdata[4], count, hdata[6], hdata[7], hdata[8])
-
-            #sock.sendto("%s%s" % (hdr, "".join(data)), (self.host, self.port))
             logger.debug("FlowThread: send data to %s on port %d (%d bytes)" % (self.host, self.port, len(data)))
             sock.sendto(data, (self.host, self.port))
             self.count += len(data)
@@ -223,8 +218,6 @@ def read_collectorlist(fn):
         if len(elem) >= 3:
             cnt += 1
             id_ = int(elem[0])
-            #ipaddr = struct.unpack('!L',socket.inet_aton(elem[1]))[0]
-            #ipaddr = socket.ntohl(ipaddr)
             ipaddr = elem[1]
             port = int(elem[2])
             collector_list[id_] = Collector(id_, ipaddr, port)
@@ -256,8 +249,6 @@ def get_prefixid(ipaddr):
     global prefix_list
     
     id_ = 0
-    #ipaddr = socket.ntohl(ipaddr)
-    #ip = struct.unpack('!L',socket.inet_aton(ipaddr))[0]
     for netaddr, netmask, prefid in prefix_list:
         if (ipaddr & netmask) == (netaddr & netmask):
             id_ = prefid
@@ -300,8 +291,6 @@ def send_datagram(collector_id, datagram):
     addr = ['127.0.0.2', 12345]
     fdata = sflow.Datagram()
     fdata.unpack(addr, datagram)
-    #sys.stdout.write(repr(fdata))
-
 
     try:
         collector_list[collector_id].senddata(datagram)
