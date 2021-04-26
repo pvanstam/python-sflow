@@ -29,7 +29,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.5.0"
+__version__ = "0.5.0a"
 __modified__ = "27-04-2021"
 
 import os
@@ -214,7 +214,7 @@ def read_collectorlist(fn):
         Output is the global collector_list
     """
     global collector_list
-    tmplist=()
+    tmplist=[]
     fp = open(fn, "r")
     for line in fp:
         elem = line.split(",")
