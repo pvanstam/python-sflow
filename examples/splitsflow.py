@@ -29,8 +29,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.4.10"
-__modified__ = "26-04-2021"
+__version__ = "0.5.0"
+__modified__ = "27-04-2021"
 
 import os
 import sys
@@ -129,11 +129,15 @@ class FlowThread(threading.Thread):
 
         while True:
             data = self.queue.get()
-            logger.debug("FlowThread: send data to %s on port %d (%d bytes)" % (self.host, self.port, len(data)))
-            sock.sendto(data, (self.host, self.port))
-            self.count += len(data)
-            self.queue.task_done()
-            logger.debug("FlowThread: new count is " + str(self.count))
+            if data == "TERMINATE":
+                logger.info("FlowThread: terminating thread with id " + str(self.target))
+                break
+            else:
+                logger.debug("FlowThread: send data to %s on port %d (%d bytes)" % (self.host, self.port, len(data)))
+                sock.sendto(data, (self.host, self.port))
+                self.count += len(data)
+                self.queue.task_done()
+                logger.debug("FlowThread: new count is " + str(self.count))
 
 
 def read_config(confg, cfgfile, context):
@@ -210,19 +214,39 @@ def read_collectorlist(fn):
         Output is the global collector_list
     """
     global collector_list
-    collector_list = {}  # clear the list
+    tmplist=()
     fp = open(fn, "r")
-    cnt = 0
     for line in fp:
         elem = line.split(",")
         if len(elem) >= 3:
-            cnt += 1
             id_ = int(elem[0])
             ipaddr = elem[1]
             port = int(elem[2])
-            collector_list[id_] = Collector(id_, ipaddr, port)
+            tmplist.append(id_)
+            if id_ in collector_list:
+                # check if collector has changed, remove existing entry and create new changed one
+                if collector_list[id_].host != ipaddr or collector_list[id_].port != port:
+                    logger.info("read_collectorlist: modifying collector with id " + str(id_))
+                    collector_list[id_].senddata("TERMINATE")
+                    collector_list.pop(id_)
+                    collector_list[id_] = Collector(id_, ipaddr, port)
+            else:
+                # add new collector and put it in the list
+                logger.info("read_collectorlist: add collector with id " + str(id_))
+                collector_list[id_] = Collector(id_, ipaddr, port)
     fp.close()
-    return cnt # number of elements in the list
+    
+    # remove left over collectors
+    keys = list(collector_list.keys())
+    for id_ in keys:
+        if id_ not in tmplist:
+            logger.info("read_collectorlist: removing collector with id " + str(id_))
+            collector_list[id_].senddata("TERMINATE")
+            collector_list.pop(id_)
+
+    logger.info("read_collectorlist: number of active threads: " + str(threading.active_count()))
+    
+    return len(collector_list)
     
 
 def get_nextseqnr(seqid=1):
