@@ -29,8 +29,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 '''
-__version__ = "0.5.0a"
-__modified__ = "27-04-2021"
+__version__ = "0.5.1"
+__modified__ = "18-08-2021"
 
 import os
 import sys
@@ -43,6 +43,7 @@ import threading
 import queue
 import struct
 import copy
+import ipaddress
 
 try:
     import sflow
@@ -192,13 +193,15 @@ def read_prefixlist(fn):
                 id_ = int(config['my_asn'])
             else:
                 id_ = int(elem[1])
-            network, mask = elem[0].split('/')
-            #print("%15s / %s -> %6d" % (network, mask, id_))
-            netaddr = struct.unpack('!L',socket.inet_aton(network))[0]
-            netmask = ((1<<(32-int(int(mask)))) - 1)^0xffffffff
-            prefix_list.append((netaddr, netmask, id_))
-            logger.info("read_prefixlist: added prefix %s/%s with id %s to list" % (network, mask, str(id_)))
-                    
+            
+            ipprefix = ipaddress.ip_network(elem[0])
+            network = ipprefix.network_address
+            mask = int(ipprefix.netmask)
+            #print("%15s / %s -> %6d" % (str(network), str(ipprefix.prefixlen), id_))
+            #print("   %15d / %d -> %6d" % (int(network), int(mask), id_))
+            prefix_list.append((int(network), int(mask), id_))
+            logger.info("read_prefixlist: added prefix %s/%s with id %s to list" % (str(network), str(ipprefix.prefixlen), str(id_)))
+
     fp.close()
 
 

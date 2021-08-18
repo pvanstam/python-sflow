@@ -1,5 +1,8 @@
 Release notes for python-sflow library and splitsflow application
 
+18-08-2021
+* splitsflow - v0.5.1: Use of ipaddress library in read_prefixlist(). Supporting IPv6 prefixes
+
 27-04-2021
 * splitsflow - v0.5.0: bug in read_collectorlist() - keep on adding threads
 Modified in only adding new collectors, modify on change of IP address or port and remove unused collectors
