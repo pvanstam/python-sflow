@@ -115,9 +115,8 @@ HEADER_PROTO_IPV6 = 12
 HEADER_PROTO_MPLS = 13
 HEADER_PROTO_POS = 14
 
-
 # Constants decribing the values of the 'type' field of 
-#IEEE802.3/IEEE802.1Q headers.
+# IEEE802.3/IEEE802.1Q headers.
 ETHER_TYPE_IEEE8021Q = 0x8100
 
 '''
@@ -132,6 +131,7 @@ ETHER_TYPE_IEEE8021Q = 0x8100
         - Datagrm header
         - Sample records, FlowSample or CounterSample
 """
+
 
 class Datagram(object):
     """
@@ -156,7 +156,6 @@ class Datagram(object):
         self.uptime = 0
         self.num_samples = 0
         self.sample_records = []
-    
 
     def unpack(self, addr, data):
         '''
@@ -204,9 +203,11 @@ class Datagram(object):
         #up.done()
         
     def pack(self):
-        '''
+        """
             pack the datagram class record into a binary datagram object
-        '''
+        :return:
+        """
+
         packdata = xdrlib.Packer() # create the packed object
         packdata.pack_int(self.version)
         packdata.pack_int(self.agent_address_type)
@@ -222,9 +223,7 @@ class Datagram(object):
             packdata.pack_uint(rec.sample_type)
             packdata.pack_bytes(rec.pack())
 
-
         return packdata.get_buffer()
-
 
     def __repr__(self):
         repr_ = ('\nDatagram| src: %s/%d, agent: %s(%d), seq: %d, uptime: %dh; samples: %d\n'
@@ -232,7 +231,7 @@ class Datagram(object):
                    self.src_port, 
                    util.ip_to_string(self.agent_address),
                    self.sub_agent_id, 
-                   self.sequence_number, 
+                   self.sequence_number,
                    math.floor(self.uptime/3600000.0),
                    self.num_samples))
         for rec in self.sample_records:
@@ -284,7 +283,6 @@ class FlowSample ():
         self.num_flow_records = 0
         self.flow_records = []
 
-
     def unpack(self, data):
         pdata = xdrlib.Unpacker(data)
         self.sequence_number = pdata.unpack_uint()
@@ -301,7 +299,6 @@ class FlowSample ():
                                                   pdata.unpack_uint(),
                                                   pdata.unpack_bytes())            
             self.flow_records.append(flow_record)
-
 
     def pack(self):
         '''
@@ -327,7 +324,6 @@ class FlowSample ():
 
         return packdata.get_buffer()
 
-        
     def __repr__(self):
         repr_ = ('  FlowSample: len: %d, seq: %d, in_if: %d, out_if: %d, rate: %d>, records: %d\n' %
                 (self.len,
@@ -340,7 +336,6 @@ class FlowSample ():
             repr_ += repr(rec)
 
         return repr_
-
 
 
 class ExpandedFlowSample():
@@ -426,7 +421,6 @@ class ExpandedFlowSample():
             repr_ += repr(rec)
 
         return repr_
-
 
 
 class CounterSample():
@@ -607,6 +601,7 @@ def get_sample_record_object(sample_type, record_type, data):
     record.len = len(data)
     record.type = record_type
     record.unpack(data)
+
     return record
 
 
@@ -645,6 +640,8 @@ class sample_record_unknown():
     check functions: read_sampled_ipv4
 
 """
+
+
 class flowdata_record_raw():
     '''
         not defined sample record in  Flow or Counter samples
@@ -855,8 +852,6 @@ class flowdata_record_extswitch():
                (self.type, self.len, self.src_vlan, self.src_priority, self.dst_vlan, self.dst_priority))
 
 
-
-
 """
     CounterSample - counter records classes and code/decode functions
 """
@@ -966,7 +961,6 @@ class counter_record_if():
         return("    CountersIf: type: %d, len: %d, idx: %d, speed: %s, in_octets: %d, out_octets: %d\n" %
                 (self.type, self.len, self.ifIndex,
                  util.speed_to_string(self.ifSpeed), self.ifInOctets, self.ifOutOctets))
-
 
 
 class counter_record_ethernet():
@@ -1315,13 +1309,14 @@ class counter_record_sfp():
         return("    CountersSFP: type: %d, len: %d\n" % (self.type, self.len))
 
 
-
 """
     Representation helper functions
     ===============================
     
     Raw ethernet / IP / TCP / UDP header classes for sFlow raw flows
 """
+
+
 class EthernetHeader():
     """Represents an IEEE 802.3 header including its payload."""
 
@@ -1363,7 +1358,6 @@ class IEEE8021QHeader():
         if self.payload:
             repr_ += repr(self.payload)
         return repr_
-
 
 
 class IPv4Header ():
@@ -1465,7 +1459,6 @@ def decode_iso88023(header):
                 h.payload = IPv4Header(header[14:])
             return h
 
-    
 
 def read_sampled_ipv4(up, sample_datagram):
 
@@ -1492,7 +1485,6 @@ def read_sampled_ipv4(up, sample_datagram):
     tos = up.unpack_uint()
 
     return None
-
 
 
 def read_tokenring_counters(up):
