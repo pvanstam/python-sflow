@@ -183,17 +183,17 @@ class Datagram(object):
         self.sequence_number = up.unpack_uint()
         self.uptime = up.unpack_uint()
         self.num_samples = up.unpack_uint()
-        if self.num_samples == None:
+        if self.num_samples is None:
             self.num_samples = 0
 
         # Iterating over sample records
         for i in range(self.num_samples):
             sample_type = up.unpack_uint()
-            if sample_type != None:
+            if sample_type is not None:
                 sample = get_sample_object(sample_type)
-                if sample != None:
+                if sample is not None:
                     data = up.unpack_bytes()
-                    if data != None:
+                    if data is not None:
                         sample.len = len(data)
 #TODO: check / try for len > 0; unpack fails from time to time
                         sample.unpack(data)
