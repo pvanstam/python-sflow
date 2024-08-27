@@ -23,6 +23,7 @@
     The MIT License (MIT)
 
     Copyright (c) 2016 Pim van Stam <pim@svsnet.nl>
+    Copyright (c) 2024 Ian A. Underwood <ian@underwood-hq.org>
     
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -42,8 +43,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 """
-__version__ = "0.2.4"
-__modified__ = "31-01-2019"
+__version__ = "0.2.5"
+__modified__ = "2024-08-31"
 
 import sys
 import xdrlib
@@ -62,6 +63,7 @@ SAMPLE_DATA_FLOW_RECORD = 1
 SAMPLE_DATA_COUNTER_RECORD = 2
 SAMPLE_DATA_FLOW_EXPANDED_RECORD = 3
 SAMPLE_DATA_COUNTER_EXPANDED_RECORD = 4
+SAMPLE_DATA_DISCARDED_PACKET = 5
 
 
 # Constants for the flow_format member of 'struct flow_record'
@@ -239,18 +241,22 @@ class Datagram(object):
 
 
 def get_sample_object(sample_type):
-    '''
-        return object of a sFlow sample class
-    '''
+    """
+    return object of a sFlow sample class
+
+    :param sample_type:
+    :return:
+    """
     if sample_type == SAMPLE_DATA_FLOW_RECORD:
         return FlowSample()
     elif sample_type == SAMPLE_DATA_COUNTER_RECORD:
         return CounterSample()
     elif sample_type == SAMPLE_DATA_FLOW_EXPANDED_RECORD:
         return ExpandedFlowSample()
+    elif sample_type == SAMPLE_DATA_DISCARDED_PACKET:
+        return DiscardedPacketSample()
     else:
         return None
-
 
 
 """
@@ -258,6 +264,7 @@ def get_sample_object(sample_type):
     - FlowSample
     - CounterSample
 """
+
 
 class FlowSample ():
     """
@@ -474,6 +481,61 @@ class CounterSample():
                   self.source_id,
                   self.num_counter_records))
         for rec in self.counter_records:
+            repr_ += repr(rec)
+
+        return repr_
+
+
+class DiscardedPacketSample():
+    """
+        Discarded Packet Sampling
+    """
+
+    def __init__(self):
+        self.sample_type = SAMPLE_DATA_DISCARDED_PACKET
+        self.len = 0
+        self.sequence_number = 0
+        self.ds_class = 0
+        self.ds_index = 0
+        self.drops = 0
+        self.input_if = 0
+        self.output_if = 0
+        self.reason = 0
+        self.num_records = 0
+        self.flow_records = []
+
+    def unpack(self, data):
+        pdata = xdrlib.Unpacker(data)
+        self.sequence_number = pdata.unpack_uint()
+        self.ds_class = pdata.unpack_uint()
+        self.ds_index = pdata.unpack_uint()
+        self.drops = pdata.unpack_uint()
+        self.input_if = pdata.unpack_uint()
+        self.output_if = pdata.unpack_uint()
+        self.reason = pdata.unpack_uint()
+        self.num_records = pdata.unpack_uint()
+
+        for i in range(self.num_records):
+            flow_record = get_sample_record_object(SAMPLE_DATA_FLOW_RECORD,
+                                                   pdata.unpack_uint(),
+                                                   pdata.unpack_bytes())
+            self.flow_records.append(flow_record)
+
+    def pack(self):
+        # Need to complete this.
+        return
+
+    def __repr__(self):
+        repr_ = ('  DiscardedPacket: len: %d, seq: %d, drops: %d, in_if: %d, out_if: %d, reason: %d, records: %d\n' %
+                 (self.len,
+                  self.sequence_number,
+                  self.drops,
+                  self.input_if,
+                  self.output_if,
+                  self.reason,
+                  self.num_records))
+
+        for rec in self.flow_records:
             repr_ += repr(rec)
 
         return repr_
