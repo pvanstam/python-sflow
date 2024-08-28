@@ -23,6 +23,7 @@
     The MIT License (MIT)
 
     Copyright (c) 2016 Pim van Stam <pim@svsnet.nl>
+    Copyright (c) 2024 Ian A. Underwood <ian@underwood-hq.org>
     
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -42,8 +43,8 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 """
-__version__ = "0.2.4"
-__modified__ = "31-01-2019"
+__version__ = "0.2.5"
+__modified__ = "2024-08-31"
 
 import sys
 import xdrlib
@@ -62,6 +63,7 @@ SAMPLE_DATA_FLOW_RECORD = 1
 SAMPLE_DATA_COUNTER_RECORD = 2
 SAMPLE_DATA_FLOW_EXPANDED_RECORD = 3
 SAMPLE_DATA_COUNTER_EXPANDED_RECORD = 4
+SAMPLE_DATA_DISCARDED_PACKET = 5
 
 
 # Constants for the flow_format member of 'struct flow_record'
@@ -113,9 +115,8 @@ HEADER_PROTO_IPV6 = 12
 HEADER_PROTO_MPLS = 13
 HEADER_PROTO_POS = 14
 
-
 # Constants decribing the values of the 'type' field of 
-#IEEE802.3/IEEE802.1Q headers.
+# IEEE802.3/IEEE802.1Q headers.
 ETHER_TYPE_IEEE8021Q = 0x8100
 
 '''
@@ -130,6 +131,7 @@ ETHER_TYPE_IEEE8021Q = 0x8100
         - Datagrm header
         - Sample records, FlowSample or CounterSample
 """
+
 
 class Datagram(object):
     """
@@ -154,7 +156,6 @@ class Datagram(object):
         self.uptime = 0
         self.num_samples = 0
         self.sample_records = []
-    
 
     def unpack(self, addr, data):
         '''
@@ -182,17 +183,17 @@ class Datagram(object):
         self.sequence_number = up.unpack_uint()
         self.uptime = up.unpack_uint()
         self.num_samples = up.unpack_uint()
-        if self.num_samples == None:
+        if self.num_samples is None:
             self.num_samples = 0
 
         # Iterating over sample records
         for i in range(self.num_samples):
             sample_type = up.unpack_uint()
-            if sample_type != None:
+            if sample_type is not None:
                 sample = get_sample_object(sample_type)
-                if sample != None:
+                if sample is not None:
                     data = up.unpack_bytes()
-                    if data != None:
+                    if data is not None:
                         sample.len = len(data)
 #TODO: check / try for len > 0; unpack fails from time to time
                         sample.unpack(data)
@@ -202,9 +203,11 @@ class Datagram(object):
         #up.done()
         
     def pack(self):
-        '''
+        """
             pack the datagram class record into a binary datagram object
-        '''
+        :return:
+        """
+
         packdata = xdrlib.Packer() # create the packed object
         packdata.pack_int(self.version)
         packdata.pack_int(self.agent_address_type)
@@ -220,9 +223,7 @@ class Datagram(object):
             packdata.pack_uint(rec.sample_type)
             packdata.pack_bytes(rec.pack())
 
-
         return packdata.get_buffer()
-
 
     def __repr__(self):
         repr_ = ('\nDatagram| src: %s/%d, agent: %s(%d), seq: %d, uptime: %dh; samples: %d\n'
@@ -230,7 +231,7 @@ class Datagram(object):
                    self.src_port, 
                    util.ip_to_string(self.agent_address),
                    self.sub_agent_id, 
-                   self.sequence_number, 
+                   self.sequence_number,
                    math.floor(self.uptime/3600000.0),
                    self.num_samples))
         for rec in self.sample_records:
@@ -239,18 +240,22 @@ class Datagram(object):
 
 
 def get_sample_object(sample_type):
-    '''
-        return object of a sFlow sample class
-    '''
+    """
+    return object of a sFlow sample class
+
+    :param sample_type:
+    :return:
+    """
     if sample_type == SAMPLE_DATA_FLOW_RECORD:
         return FlowSample()
     elif sample_type == SAMPLE_DATA_COUNTER_RECORD:
         return CounterSample()
     elif sample_type == SAMPLE_DATA_FLOW_EXPANDED_RECORD:
         return ExpandedFlowSample()
+    elif sample_type == SAMPLE_DATA_DISCARDED_PACKET:
+        return DiscardedPacketSample()
     else:
         return None
-
 
 
 """
@@ -258,6 +263,7 @@ def get_sample_object(sample_type):
     - FlowSample
     - CounterSample
 """
+
 
 class FlowSample ():
     """
@@ -277,7 +283,6 @@ class FlowSample ():
         self.num_flow_records = 0
         self.flow_records = []
 
-
     def unpack(self, data):
         pdata = xdrlib.Unpacker(data)
         self.sequence_number = pdata.unpack_uint()
@@ -294,7 +299,6 @@ class FlowSample ():
                                                   pdata.unpack_uint(),
                                                   pdata.unpack_bytes())            
             self.flow_records.append(flow_record)
-
 
     def pack(self):
         '''
@@ -320,7 +324,6 @@ class FlowSample ():
 
         return packdata.get_buffer()
 
-        
     def __repr__(self):
         repr_ = ('  FlowSample: len: %d, seq: %d, in_if: %d, out_if: %d, rate: %d>, records: %d\n' %
                 (self.len,
@@ -333,7 +336,6 @@ class FlowSample ():
             repr_ += repr(rec)
 
         return repr_
-
 
 
 class ExpandedFlowSample():
@@ -421,7 +423,6 @@ class ExpandedFlowSample():
         return repr_
 
 
-
 class CounterSample():
     '''
         sFlow sample type Counter Sample
@@ -474,6 +475,61 @@ class CounterSample():
                   self.source_id,
                   self.num_counter_records))
         for rec in self.counter_records:
+            repr_ += repr(rec)
+
+        return repr_
+
+
+class DiscardedPacketSample():
+    """
+        Discarded Packet Sampling
+    """
+
+    def __init__(self):
+        self.sample_type = SAMPLE_DATA_DISCARDED_PACKET
+        self.len = 0
+        self.sequence_number = 0
+        self.ds_class = 0
+        self.ds_index = 0
+        self.drops = 0
+        self.input_if = 0
+        self.output_if = 0
+        self.reason = 0
+        self.num_records = 0
+        self.flow_records = []
+
+    def unpack(self, data):
+        pdata = xdrlib.Unpacker(data)
+        self.sequence_number = pdata.unpack_uint()
+        self.ds_class = pdata.unpack_uint()
+        self.ds_index = pdata.unpack_uint()
+        self.drops = pdata.unpack_uint()
+        self.input_if = pdata.unpack_uint()
+        self.output_if = pdata.unpack_uint()
+        self.reason = pdata.unpack_uint()
+        self.num_records = pdata.unpack_uint()
+
+        for i in range(self.num_records):
+            flow_record = get_sample_record_object(SAMPLE_DATA_FLOW_RECORD,
+                                                   pdata.unpack_uint(),
+                                                   pdata.unpack_bytes())
+            self.flow_records.append(flow_record)
+
+    def pack(self):
+        # Need to complete this.
+        return
+
+    def __repr__(self):
+        repr_ = ('  DiscardedPacket: len: %d, seq: %d, drops: %d, in_if: %d, out_if: %d, reason: %d, records: %d\n' %
+                 (self.len,
+                  self.sequence_number,
+                  self.drops,
+                  self.input_if,
+                  self.output_if,
+                  self.reason,
+                  self.num_records))
+
+        for rec in self.flow_records:
             repr_ += repr(rec)
 
         return repr_
@@ -545,6 +601,7 @@ def get_sample_record_object(sample_type, record_type, data):
     record.len = len(data)
     record.type = record_type
     record.unpack(data)
+
     return record
 
 
@@ -583,6 +640,8 @@ class sample_record_unknown():
     check functions: read_sampled_ipv4
 
 """
+
+
 class flowdata_record_raw():
     '''
         not defined sample record in  Flow or Counter samples
@@ -793,8 +852,6 @@ class flowdata_record_extswitch():
                (self.type, self.len, self.src_vlan, self.src_priority, self.dst_vlan, self.dst_priority))
 
 
-
-
 """
     CounterSample - counter records classes and code/decode functions
 """
@@ -904,7 +961,6 @@ class counter_record_if():
         return("    CountersIf: type: %d, len: %d, idx: %d, speed: %s, in_octets: %d, out_octets: %d\n" %
                 (self.type, self.len, self.ifIndex,
                  util.speed_to_string(self.ifSpeed), self.ifInOctets, self.ifOutOctets))
-
 
 
 class counter_record_ethernet():
@@ -1253,13 +1309,14 @@ class counter_record_sfp():
         return("    CountersSFP: type: %d, len: %d\n" % (self.type, self.len))
 
 
-
 """
     Representation helper functions
     ===============================
     
     Raw ethernet / IP / TCP / UDP header classes for sFlow raw flows
 """
+
+
 class EthernetHeader():
     """Represents an IEEE 802.3 header including its payload."""
 
@@ -1301,7 +1358,6 @@ class IEEE8021QHeader():
         if self.payload:
             repr_ += repr(self.payload)
         return repr_
-
 
 
 class IPv4Header ():
@@ -1403,7 +1459,6 @@ def decode_iso88023(header):
                 h.payload = IPv4Header(header[14:])
             return h
 
-    
 
 def read_sampled_ipv4(up, sample_datagram):
 
@@ -1430,7 +1485,6 @@ def read_sampled_ipv4(up, sample_datagram):
     tos = up.unpack_uint()
 
     return None
-
 
 
 def read_tokenring_counters(up):
