@@ -347,9 +347,9 @@ def split_records(flow_datagram):
             for rec in sample.flow_records:
                 if rec.type == sflow.FLOW_DATA_RAW_HEADER:
                     pkt = rec.sampled_packet
-                    if pkt != None:
+                    if pkt is not None:
                         payl = pkt.payload
-                        if payl != None:
+                        if payl is not None:
                             # check dst ip address against collectors list
                             logger.debug("split_records: found sample with dst IP " + util.ip_to_string(payl.dst))
                             collectid = get_prefixid(payl.dst)
